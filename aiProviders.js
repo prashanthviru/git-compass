@@ -211,9 +211,8 @@ function runCli(cli, fullPrompt, { cwd, token, timeoutMs = 180000, env = process
     });
     child.stdout.on('data', (d) => (out += d));
     child.stderr.on('data', (d) => (err += d));
-    child.on('error', (e) =>
-      finish(reject, e.code === 'ENOENT' ? new Error(`\`${cli.command}\` was not found. Install it or change "gitCompass.ai.cli.command".`) : e)
-    );
+    const notFound = () => new Error(`\`${cli.command}\` was not found. Install it or change "gitCompass.ai.cli.command".`);
+    child.on('error', (e) => finish(reject, e.code === 'ENOENT' ? notFound() : e));
     child.on('close', (code) => {
       let answer = stripAnsi(out).trim();
       if (plan.readsOutputFile) {
@@ -224,6 +223,7 @@ function runCli(cli, fullPrompt, { cwd, token, timeoutMs = 180000, env = process
         }
       }
       if (code === 0 && answer && !/^API Error/.test(answer)) finish(resolve, answer);
+      else if (code === 9009 || code === 127 || /is not recognized as an internal or external command|command not found/i.test(err)) finish(reject, notFound());
       else finish(reject, new Error(stripAnsi(err.trim() || answer || `\`${cli.command}\` exited with code ${code}`).split('\n').slice(-6).join('\n')));
     });
     child.stdin.on('error', () => {});
