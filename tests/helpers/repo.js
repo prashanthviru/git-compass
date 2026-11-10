@@ -13,6 +13,7 @@ function createRepo() {
   git(root, 'config', 'user.name', 'Test User');
   git(root, 'config', 'user.email', 'test@example.com');
   git(root, 'config', 'commit.gpgsign', 'false');
+  git(root, 'config', 'core.autocrlf', 'false');
   const write = (rel, content) => {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.writeFileSync(path.join(root, rel), content);
