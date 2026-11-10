@@ -4,6 +4,50 @@ Find your way around any Git repository from inside VS Code. You get blame, file
 
 > **Preview.** Git Compass is at 0.1.0 and still being tested. Please [report anything that breaks](https://github.com/prashanthviru/git-compass/issues).
 
+## Install
+
+Git Compass isn't on the Marketplace yet. Until it is, install it from a `.vsix` file. You need VS Code 1.90 or newer, or VSCodium.
+
+### 1. Get the `.vsix` file
+
+Choose one:
+
+- **Download a build.** Open the [CI workflow runs](https://github.com/prashanthviru/git-compass/actions/workflows/ci.yml), choose the latest successful run on `main`, and download the **git-compass-vsix** artifact. You must be signed in to GitHub to download it. Unzip it to get `git-compass.vsix`.
+- **Build it yourself.** You need Git and Node.js 20 or newer:
+
+  ```bash
+  git clone https://github.com/prashanthviru/git-compass.git
+  cd git-compass
+  npm run package
+  ```
+
+  This creates `git-compass.vsix` in the folder.
+
+### 2. Install it in VS Code
+
+- **From the Extensions view:** press `Ctrl+Shift+X` (`Cmd+Shift+X` on macOS), open the **…** menu at the top of the view, choose **Install from VSIX…**, and pick `git-compass.vsix`.
+- **From a terminal:**
+
+  ```bash
+  code --install-extension git-compass.vsix
+  ```
+
+  In VSCodium, use `codium --install-extension git-compass.vsix`.
+
+Then reload the window: open the Command Palette and run **Developer: Reload Window**. Two icons appear in the activity bar: **Git Compass** and **Git Compass Inspect**.
+
+### 3. First steps
+
+- Open a folder that is a Git repository and trust it when VS Code asks. Git Compass stays off in Restricted Mode.
+- For **Launchpad**, install the [GitHub CLI](https://cli.github.com) and run `gh auth login`.
+- AI stays off until you run **Git Compass: Set Up AI Provider…** from the Command Palette.
+- If another installed extension also shows blame or opens rebase files, turn off that feature in one of them so you don't see it twice.
+
+### Update or uninstall
+
+- **Update:** install the newer `.vsix` the same way. It replaces the old version.
+- **Uninstall:** open the Extensions view, select Git Compass and choose **Uninstall**, or run `code --uninstall-extension prashanthviru.git-compass`.
+
 ## Screenshots
 
 Screenshots and short clips are coming with the first Marketplace release.
