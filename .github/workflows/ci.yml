@@ -33,7 +33,7 @@ jobs:
         run: npx --yes @vscode/vsce@3 package -o git-compass.vsix
       - name: Upload package
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: git-compass-vsix
           path: git-compass.vsix
