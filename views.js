@@ -318,7 +318,7 @@ function toTreeItem(node) {
       md.appendMarkdown(`**${group?.label || 'Open'}** — ${info.badges.join(' · ') || 'no checks or reviews yet'}`);
       if (info.snoozedUntil) md.appendMarkdown(`\n\n$(bell-slash) Snoozed ${info.snoozedUntil === Infinity ? 'until you unsnooze it' : `until ${new Date(info.snoozedUntil).toLocaleString()}`}`);
       item.tooltip = md;
-      item.contextValue = ['pr', info.pinned && 'pinned', info.snoozedUntil && 'snoozed', info.canMerge && 'mergeable'].filter(Boolean).join(':');
+      item.contextValue = ['pr', info.pinned && 'pinned', info.snoozedUntil && 'snoozed', info.canMerge && 'mergeable', pr.mergeable === 'CONFLICTING' && 'conflicting'].filter(Boolean).join(':');
       item.command = { command: 'gitCompass.pr.open', title: 'Open Pull Request', arguments: [node] };
       return item;
     }
@@ -585,23 +585,6 @@ async function openPrWorktree(node) {
     'Open in New Window'
   );
   if (open) await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(target), { forceNewWindow: true });
-}
-
-async function mergePr(node) {
-  const { root, pr } = node;
-  const choice = await vscode.window.showWarningMessage(
-    `Merge #${pr.number} into ${pr.baseRefName}?`,
-    { modal: true, detail: `${pr.title}\n\n${pr.headRefName} → ${pr.baseRefName}. This merges on GitHub; the branch is not deleted.` },
-    'Squash and Merge',
-    'Create Merge Commit',
-    'Rebase and Merge'
-  );
-  if (!choice) return;
-  const flag = { 'Squash and Merge': '--squash', 'Create Merge Commit': '--merge', 'Rebase and Merge': '--rebase' }[choice];
-  await vscode.window.withProgress({ location: { viewId: VIEW.launchpad } }, () => gh(root, ['pr', 'merge', String(pr.number), flag]));
-  launchpadCache = undefined;
-  views.launchpad.refresh();
-  vscode.window.showInformationMessage(`Merged #${pr.number}.`);
 }
 
 async function isDirty(root, rel) {
@@ -957,7 +940,7 @@ function register(context) {
       refreshAll();
     },
     'launchpad.openWorktree': openPrWorktree,
-    'launchpad.merge': mergePr,
+    'launchpad.merge': (node) => vscode.commands.executeCommand('gitCompass.pr.merge', node),
     'launchpad.pin': async (node) => {
       const prefs = launchpadPrefs();
       await saveLaunchpadPrefs({ ...prefs, pinned: [...new Set([...prefs.pinned, node.pr.url])] });
@@ -1036,4 +1019,4 @@ function addSearch(root, label, query, args) {
   return focus('search');
 }
 
-module.exports = { register, refreshAll, addSearch, VIEW, SEARCH_MODES, formatTrack, relativeDate, checksState, classifyPr, groupLaunchpad };
+module.exports = { register, refreshAll, addSearch, gh, VIEW, SEARCH_MODES, formatTrack, relativeDate, checksState, classifyPr, groupLaunchpad };

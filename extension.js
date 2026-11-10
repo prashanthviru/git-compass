@@ -64,6 +64,7 @@ async function menu() {
     { label: '$(repo) Worktrees', command: 'gitCompass.worktrees' },
     { label: '$(git-compare) Compare Branch with…', command: 'gitCompass.compareBranch' },
     { label: '$(search) Search Commits…', command: 'gitCompass.search' },
+    { label: '$(git-pull-request-create) Create Pull Request…', command: 'gitCompass.pr.create' },
     ...(hasFile
       ? [
           { label: '$(history) File History', command: 'gitCompass.fileHistory' },
@@ -93,7 +94,7 @@ async function activate(context) {
   const api = await g.getGitApi();
   if (!api) return;
   views.register(context);
-  for (const name of ['./editor', './visualHistory', './rebase', './ai']) optional(name)?.register(context);
+  for (const name of ['./editor', './visualHistory', './rebase', './ai', './conflicts', './pullRequests']) optional(name)?.register(context);
 
   g.onRepoChange(context, scheduleStatus, 300);
   context.subscriptions.push(

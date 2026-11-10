@@ -4,6 +4,14 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+- **Create Pull Request** form inside VS Code: base branch, title, description (from the repository's pull request template or your commits), reviewers, labels, draft, and optional AI drafting. Offers to push the branch first, with an explicit refspec.
+- **Merge pull requests** from Launchpad with squash, merge commit, rebase or auto-merge when checks pass, optional branch deletion, and warnings for failing checks, missing approval, conflicts or drafts.
+- **Conflicts view** that appears during a merge, rebase, cherry-pick or revert: correct current/incoming labels, merge editor, accept a side, mark resolved, AI-suggested resolutions, and Continue, Skip or Abort. A status bar item shows how many files still conflict.
+- **Resolve a pull request's conflicts locally** and **Push Current Branch** to update it.
+- **Branch actions**: merge into the current branch (merge commit, fast-forward only or squash), rebase the current branch onto another, and update the current branch from the base branch.
+- Settings `gitCompass.views.conflicts.enabled`, `gitCompass.pr.defaultDraft` and `gitCompass.pr.deleteBranchAfterMerge`.
+
 ## [0.1.0] - 2026-11-10
 
 First public preview.

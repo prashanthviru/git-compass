@@ -245,19 +245,10 @@ async function createPrWithGh(root, branch, base, doc) {
   }
 }
 
-async function generatePullRequest() {
-  const repo = repoFromArg();
-  const root = repo.rootUri.fsPath;
-  const branch = repo.state.HEAD?.name;
-  if (!branch) throw new Error('Check out a branch first; HEAD is detached.');
-  const base = await pickBase(root, `Pull request from ${branch} into…`);
-  if (!base) return;
+async function draftPullRequest(root, branch, base) {
   const mergeBase = (await g.git(root, ['merge-base', base, 'HEAD'])).trim();
   const commits = await g.logCommits(root, ['--no-merges', '-n200', `${mergeBase}..HEAD`, '--']);
-  if (!commits.length) {
-    vscode.window.showInformationMessage(`${branch} has no commits that are not already in ${base}.`);
-    return;
-  }
+  if (!commits.length) return undefined;
   const [stat, diff] = await Promise.all([g.git(root, ['diff', '--stat', mergeBase, 'HEAD']), diffText(root, [mergeBase, 'HEAD'])]);
   const text = await ask(
     'Writing pull request',
@@ -270,7 +261,23 @@ async function generatePullRequest() {
     `Commits:\n${commitList(commits, true)}\n\nFiles:\n${stat}\n\nDiff:\n${diff}`,
     root
   );
-  const doc = await showMarkdown(stripFences(text), false);
+  return parsePrDraft(stripFences(text));
+}
+
+async function generatePullRequest() {
+  const repo = repoFromArg();
+  const root = repo.rootUri.fsPath;
+  const branch = repo.state.HEAD?.name;
+  if (!branch) throw new Error('Check out a branch first; HEAD is detached.');
+  const base = await pickBase(root, `Pull request from ${branch} into…`);
+  if (!base) return;
+  const draft = await draftPullRequest(root, branch, base);
+  if (!draft) {
+    vscode.window.showInformationMessage(`${branch} has no commits that are not already in ${base}.`);
+    return;
+  }
+  const text = `# ${draft.title}\n\n${draft.body}`;
+  const doc = await showMarkdown(text, false);
   const choice = await vscode.window.showInformationMessage(
     `Pull request draft for ${branch} → ${g.shortRef(base)} is open. Edit it if needed, then:`,
     'Create PR with gh',
@@ -655,6 +662,7 @@ module.exports = {
   stripFences,
   stripNoiseFromDiff,
   parsePrDraft,
+  draftPullRequest,
   parseSearchReply,
   validateSearchArgs,
   slugify,

@@ -57,13 +57,20 @@ Screenshots and short clips are coming with the first Marketplace release.
 ### Git Compass side bar
 | View | What it shows |
 |---|---|
+| **Conflicts** | Appears only while a merge, rebase, cherry-pick or revert has conflicts. Shows what is happening ("Rebasing feature onto main (2/5)"), each conflicted file with which side changed what, and the files already resolved. Open the merge editor, accept the current or incoming side, mark files resolved, ask AI for a suggested resolution, then Continue, Skip or Abort. |
 | **Commits** | The current branch's commits, with unpushed ones highlighted. Expand a commit to see its files and open any diff. |
-| **Branches** | Local branches with ahead/behind counts against their upstream. Switch, compare, copy the name or delete. |
+| **Branches** | Local branches with ahead/behind counts against their upstream. Switch, compare, merge into the current branch (merge commit, fast-forward only or squash), rebase onto, update from the base branch, create a pull request, copy the name or delete. |
 | **Remotes** | Each remote and its branches. |
 | **Stashes** | Your stashes and their files. Apply, pop or drop. |
 | **Tags** | Tags and their commits. Compare a tag with your branch, or delete it. |
 | **Worktrees** | Every worktree, with ahead/behind and uncommitted counts. Create, open in a new window or this one, reveal or remove. |
-| **Launchpad** | Your open pull requests grouped as Needs Your Review, Blocked, Ready to Merge, Waiting for Review, Assigned to You and Drafts. Pin, snooze, merge, check out, or open in a new worktree. Needs the GitHub CLI. |
+| **Launchpad** | Your open pull requests grouped as Needs Your Review, Blocked, Ready to Merge, Waiting for Review, Assigned to You and Drafts. Create a pull request, merge any pull request (squash, merge commit, rebase or auto-merge when checks pass, with warnings for failing checks, missing approval, conflicts or drafts), resolve a pull request's conflicts locally, pin, snooze, check out, or open in a new worktree. Needs the GitHub CLI. |
+
+### Pull requests, merging and conflicts
+- **Create Pull Request** opens a form in VS Code: pick the base branch, edit the title and description (prefilled from your repository's pull request template or your commits), add reviewers and labels, choose draft, or let AI write it. If the branch isn't on origin yet, Git Compass offers to push it first.
+- **Merge** a pull request from Launchpad, or merge or rebase branches locally from the Branches view.
+- **Resolve conflicts** in the Conflicts view, including conflicts on a pull request: Git Compass checks the branch out, merges the base in, and lets you push the result when you're done.
+- Anything that changes GitHub or your remote asks you to confirm first. Git Compass pushes only with an explicit branch name, never force-pushes, and refuses to push protected branches.
 
 ### Git Compass Inspect side bar
 | View | What it shows |
@@ -112,6 +119,8 @@ Open the Command Palette and type **Git Compass**:
 | History | Show File History, Show Line History, Open Visual File History, Open Previous / Next Revision |
 | Compare and search | Compare Branch with…, Compare File with Branch…, Search Commits… |
 | Worktrees | Show Worktrees, Create Worktree… |
+| Pull requests and merging | Create Pull Request…, Push Current Branch, Update Current Branch from Base |
+| Conflicts | Continue Merge or Rebase, Skip Commit, Abort Merge or Rebase |
 | Annotations | Toggle File Blame, Toggle File Heatmap, Toggle File Changes, Clear File Annotations |
 | Rebase | Open Rebase Todo as Text |
 | AI | Set Up AI Provider…, Set AI API Key, Clear AI API Key, Test AI Connection, Generate Commit Message, Stash with AI Message…, Generate Changelog…, Generate Pull Request…, Explain Commit, Explain Changes, Review with AI, AI Search Commits…, Start Work on Issue…, Start Review of Pull Request… |
@@ -135,7 +144,7 @@ Every part of Git Compass can be turned off.
 
 | Setting | Default | Controls |
 |---|---|---|
-| `gitCompass.views.<view>.enabled` | `true` | Each view: `commits`, `branches`, `remotes`, `stashes`, `tags`, `worktrees`, `launchpad`, `fileHistory`, `lineHistory`, `compare`, `search` |
+| `gitCompass.views.<view>.enabled` | `true` | Each view: `conflicts`, `commits`, `branches`, `remotes`, `stashes`, `tags`, `worktrees`, `launchpad`, `fileHistory`, `lineHistory`, `compare`, `search` |
 | `gitCompass.currentLine.enabled` | `true` | Current-line blame and its hover |
 | `gitCompass.statusBarBlame.enabled` | `true` | Blame in the status bar |
 | `gitCompass.codeLens.enabled` | `true` | CodeLens above symbols |
@@ -147,6 +156,8 @@ Every part of Git Compass can be turned off.
 | `gitCompass.baseBranches` | `[]` | Branches for ahead/behind and compare, e.g. `["develop", "main"]`. Empty uses the remote's default branch |
 | `gitCompass.protectedBranches` | `main`, `master`, … | Branches that turn the status bar amber |
 | `gitCompass.launchpad.statusBar.enabled` | `true` | Launchpad counts in the status bar |
+| `gitCompass.pr.defaultDraft` | `false` | Tick "Create as draft" by default in the Create Pull Request form |
+| `gitCompass.pr.deleteBranchAfterMerge` | `false` | Offer deleting the branch first when merging a pull request |
 | `gitCompass.ai.provider` | `none` | `none`, `cli`, `openaiCompatible`, `anthropic` or `vscodeLm` |
 | `gitCompass.ai.cli.command` / `.args` / `.promptInput` | | The command-line tool to run and how it receives the prompt |
 | `gitCompass.ai.openaiCompatible.baseUrl` / `.model` | | Endpoint and model for OpenAI-compatible APIs |
