@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in Git Compass doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this. Please check existing issues first. Security problems go to a private advisory, not here.
+  - type: input
+    id: extension-version
+    attributes:
+      label: Git Compass version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: editor-version
+    attributes:
+      label: Editor and version
+      description: From Help → About.
+      placeholder: "VS Code 1.95.0, or VSCodium 1.95.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Remote (SSH, WSL, container or Codespaces)
+    validations:
+      required: true
+  - type: input
+    id: git-version
+    attributes:
+      label: Git version
+      description: Output of git --version.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Side bar views
+        - Launchpad
+        - Blame, hovers or annotations
+        - CodeLens or revision navigation
+        - Visual File History
+        - Rebase editor
+        - Status bar
+        - AI features
+        - Settings
+        - Other
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a repository with …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: Error notifications, or output from Help → Toggle Developer Tools → Console. Remove anything private such as API keys or repository names you can't share.
+      render: text

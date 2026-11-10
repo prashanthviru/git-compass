@@ -1,0 +1,11 @@
+*.vsix
+.vscode/**
+.github/**
+tests/**
+node_modules/**
+.editorconfig
+.gitignore
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+**/*.map
