@@ -64,9 +64,20 @@ This runs `npx @vscode/vsce@3 package`. Install the resulting `.vsix` with **Ext
 - By contributing, you agree that your contribution is licensed under the MIT License.
 
 ## Releases
-Maintainers release by tagging:
-1. Move the **Unreleased** notes in `CHANGELOG.md` under a new version heading.
-2. Bump `version` in `package.json`.
-3. Commit, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+Every change that users will notice gets a line under **Unreleased** in `CHANGELOG.md`, grouped as Added, Changed, Fixed, Security or Performance. Those lines become the release notes.
 
-The **Release** workflow runs the tests, packages the extension, publishes to the VS Code Marketplace and Open VSX (when their tokens are configured as repository secrets `VSCE_PAT` and `OVSX_PAT`), and creates a GitHub Release with the `.vsix` attached.
+To release, from an up-to-date `main` with a clean working tree:
+
+```bash
+npm run release -- patch --dry-run   # preview the version and notes
+npm run release -- patch             # or minor, major, or an exact version like 1.0.0
+```
+
+This runs the tests, bumps `version` in `package.json`, moves the **Unreleased** notes under a dated version heading, commits, tags `vX.Y.Z` and pushes both.
+
+The tag starts the **Release** workflow (`.github/workflows/release.yml`). It checks that the tag matches `package.json`, runs the tests, packages the extension, and then:
+- publishes to the **VS Code Marketplace** with Trusted Publishing, so no token is stored. The policy for this repository and `release.yml` is set up on the publisher's Trusted Publishing page.
+- publishes to **Open VSX** (Cursor, VSCodium, Windsurf) when the `OVSX_PAT` repository secret is set.
+- creates a **GitHub Release** with that version's CHANGELOG section as its notes and the `.vsix` attached.
+
+Re-running the workflow for the same tag is safe: versions that are already published are skipped.

@@ -10,3 +10,4 @@ CODE_OF_CONDUCT.md
 SECURITY.md
 **/*.map
 resources/icon.svg
+scripts/**
