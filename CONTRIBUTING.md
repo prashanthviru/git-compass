@@ -77,7 +77,7 @@ This runs the tests, bumps `version` in `package.json`, moves the **Unreleased**
 
 The tag starts the **Release** workflow (`.github/workflows/release.yml`). It checks that the tag matches `package.json`, runs the tests, packages the extension, and then:
 - publishes to the **VS Code Marketplace** with Trusted Publishing, so no token is stored. The policy for this repository and `release.yml` is set up on the publisher's Trusted Publishing page.
-- publishes to **Open VSX** (Cursor, VSCodium, Windsurf) when the `OVSX_PAT` repository secret is set.
+- publishes to **Open VSX** (Cursor, VSCodium, Windsurf), also with Trusted Publishing, when the repository variable `OPENVSX_PUBLISH` is `true`. The trusted publisher is registered for `Prashanthviru.git-compass` in the Open VSX user settings.
 - creates a **GitHub Release** with that version's CHANGELOG section as its notes and the `.vsix` attached.
 
 Re-running the workflow for the same tag is safe: versions that are already published are skipped.
