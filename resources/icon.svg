@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3b54"/><stop offset="1" stop-color="#121a25"/></linearGradient><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#62f4d2"/><stop offset="1" stop-color="#1fb3cc"/></linearGradient><linearGradient id="tip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset="1" stop-color="#ff6a2b"/></linearGradient></defs><rect width="256" height="256" rx="56" fill="url(#bg)"/>
+<circle cx="128" cy="128" r="92" fill="none" stroke="url(#ring)" stroke-width="11"/>
+<g fill="url(#ring)"><rect x="122" y="22" width="12" height="20" rx="6"/><rect x="122" y="214" width="12" height="20" rx="6"/><rect x="22" y="122" width="20" height="12" rx="6"/><rect x="214" y="122" width="20" height="12" rx="6"/></g>
+<g fill="none" stroke="#e9eff7" stroke-width="12" stroke-linecap="round"><path d="M108 96V158"/><path d="M154 118c0 30-26 36-46 46"/></g>
+<path d="M108 54 128 100H88Z" fill="url(#tip)" stroke="url(#tip)" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="108" cy="174" r="15" fill="#121a25" stroke="#e9eff7" stroke-width="10"/>
+<circle cx="154" cy="104" r="15" fill="#121a25" stroke="url(#ring)" stroke-width="10"/>
+</svg>
