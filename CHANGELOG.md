@@ -4,6 +4,8 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-11
+
 ### Changed
 - Current-line blame moves with the cursor without flickering: once a file's blame is loaded, the new line is drawn immediately instead of being cleared and redrawn.
 - Softer current-line blame colour that suits light, dark and high-contrast themes, with long commit messages shortened. Change the colour with `gitCompass.currentLineBlame.foreground` in `workbench.colorCustomizations`.
@@ -87,7 +89,8 @@ First public preview.
 - An enable setting for every view and feature.
 - Disabled in untrusted workspaces. Runs on the workspace side in remote setups.
 
-[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/prashanthviru/git-compass/compare/v0.2.1...v0.2.3
 [0.2.1]: https://github.com/prashanthviru/git-compass/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/prashanthviru/git-compass/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/prashanthviru/git-compass/releases/tag/v0.1.0

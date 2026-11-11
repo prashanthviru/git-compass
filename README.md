@@ -2,7 +2,7 @@
 
 Find your way around any Git repository from inside VS Code. You get blame, file and line history, a visual history chart, worktrees, branch compare, an interactive rebase editor, a pull request Launchpad and optional AI helpers. Everything is free and works on public and private repositories, with no account or sign-up.
 
-> **Preview.** Git Compass is at 0.2.1 and still being tested. Please [report anything that breaks](https://github.com/prashanthviru/git-compass/issues).
+> **Preview.** Git Compass is at 0.2.3 and still being tested. Please [report anything that breaks](https://github.com/prashanthviru/git-compass/issues).
 
 ## Install
 
