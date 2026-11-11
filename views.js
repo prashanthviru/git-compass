@@ -63,6 +63,92 @@ function icon(id, color) {
   return new vscode.ThemeIcon(id, color ? new vscode.ThemeColor(color) : undefined);
 }
 
+// "28m", "3h", "2d", "5w", "4mo", "2y": short enough to keep tree rows tidy.
+function shortAgo(when) {
+  const t = typeof when === 'number' ? when * 1000 : Date.parse(when);
+  if (!Number.isFinite(t)) return '';
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return 'now';
+  for (const [unit, size] of [['y', 31536000], ['mo', 2592000], ['w', 604800], ['d', 86400], ['h', 3600], ['m', 60]]) {
+    if (s >= size) return `${Math.floor(s / size)}${unit}`;
+  }
+  return 'now';
+}
+
+// Conventional-commit types get their own icon and colour, so the history scans at a glance.
+const COMMIT_TYPES = {
+  feat: ['sparkle', 'charts.green'],
+  fix: ['bug', 'charts.red'],
+  perf: ['zap', 'charts.orange'],
+  refactor: ['wrench', 'charts.blue'],
+  docs: ['book', 'charts.blue'],
+  test: ['beaker', 'charts.purple'],
+  tests: ['beaker', 'charts.purple'],
+  ci: ['gear', 'charts.foreground'],
+  build: ['package', 'charts.foreground'],
+  chore: ['tools', 'charts.foreground'],
+  style: ['symbol-color', 'charts.purple'],
+  release: ['rocket', 'charts.purple'],
+  revert: ['discard', 'charts.orange'],
+  security: ['shield', 'charts.red'],
+  deps: ['package', 'charts.foreground'],
+};
+
+function commitType(subject) {
+  const m = /^(\w+)(?:\([^)]*\))?!?:/.exec(subject || '');
+  return m ? m[1].toLowerCase() : undefined;
+}
+
+function commitIcon(c, unpushed) {
+  if (unpushed) return icon('arrow-circle-up', 'charts.yellow');
+  if (c.parents.length > 1) return icon('git-merge', 'charts.purple');
+  const type = COMMIT_TYPES[commitType(c.subject)];
+  return type ? icon(type[0], type[1]) : icon('git-commit');
+}
+
+// Tags on a commit (v1.2.0 ...); branch names stay in the hover card to keep rows short.
+function commitRefs(c) {
+  return (c.refs || [])
+    .filter((r) => r.startsWith('tag: '))
+    .map((r) => r.slice(5))
+    .slice(0, 2);
+}
+
+// "https://github.com/owner/repo.git" or "git@github.com:owner/repo.git" -> host and "owner/repo".
+function remoteLabel(url) {
+  const m = /^(?:[\w+.-]+:\/\/)?(?:[^@/]+@)?([^/:]+)[:/](.+?)(?:\.git)?\/?$/.exec(url || '');
+  if (!m) return { host: '', path: url || '' };
+  return { host: m[1].toLowerCase(), path: m[2] };
+}
+
+// Branches that share a first path segment (dependabot/..., feature/...) go into a folder.
+function groupBranches(nodes, shortName) {
+  const counts = new Map();
+  for (const n of nodes) {
+    const name = shortName(n);
+    const i = name.indexOf('/');
+    if (i > 0) counts.set(name.slice(0, i), (counts.get(name.slice(0, i)) || 0) + 1);
+  }
+  const folders = new Map();
+  const out = [];
+  for (const n of nodes) {
+    const name = shortName(n);
+    const i = name.indexOf('/');
+    const prefix = i > 0 ? name.slice(0, i) : '';
+    if (prefix && counts.get(prefix) > 1 && !n.branch.current) {
+      if (!folders.has(prefix)) {
+        const folder = { type: 'branchFolder', id: `${n.view}:folder:${n.ref.replace(/^refs\/(heads|remotes)\//, '').slice(0, -name.length)}${prefix}`, label: prefix, children: [] };
+        folders.set(prefix, folder);
+        out.push(folder);
+      }
+      folders.get(prefix).children.push({ ...n, folderPrefix: `${prefix}/` });
+    } else {
+      out.push(n);
+    }
+  }
+  return out;
+}
+
 function msg(text, iconId = 'info') {
   return { type: 'message', text, icon: iconId };
 }
@@ -180,9 +266,10 @@ function toTreeItem(node) {
     case 'commit': {
       const c = node.commit;
       const item = new vscode.TreeItem(c.subject || '(no message)', node.file ? T.None : T.Collapsed);
-      item.description = `${node.unpushed ? '↑ ' : ''}${c.author}, ${c.date}`;
+      const refs = commitRefs(c);
+      item.description = [node.unpushed ? 'not pushed' : '', c.author, shortAgo(c.iso) || c.date, refs.join(' ')].filter(Boolean).join(' · ');
       item.tooltip = g.commitTooltip(c);
-      item.iconPath = node.unpushed ? icon('git-commit', 'charts.yellow') : icon(c.parents.length > 1 ? 'git-merge' : 'git-commit');
+      item.iconPath = commitIcon(c, node.unpushed);
       item.contextValue = node.file ? 'commit+file' : 'commit';
       if (node.file) item.command = { command: 'gitCompass.openChanges', title: 'Open Changes', arguments: [node] };
       return item;
@@ -215,9 +302,11 @@ function toTreeItem(node) {
     }
     case 'branch': {
       const b = node.branch;
-      const item = new vscode.TreeItem(node.remote ? b.name.slice(b.name.indexOf('/') + 1) : b.name, T.Collapsed);
-      item.description = [b.track, b.date].filter(Boolean).join(' · ');
-      item.iconPath = b.current ? icon('check', 'charts.green') : icon('git-branch');
+      let label = node.remote ? b.name.slice(b.name.indexOf('/') + 1) : b.name;
+      if (node.folderPrefix && label.startsWith(node.folderPrefix)) label = label.slice(node.folderPrefix.length);
+      const item = new vscode.TreeItem(label, T.Collapsed);
+      item.description = [b.current ? 'current' : '', b.track, b.time ? shortAgo(b.time) : b.date].filter(Boolean).join(' · ');
+      item.iconPath = b.current ? icon('git-branch', 'charts.green') : b.track === 'upstream gone' ? icon('git-branch', 'list.warningForeground') : icon('git-branch');
       const md = new vscode.MarkdownString('', true);
       md.appendMarkdown(`$(git-branch) **${b.name}**${b.current ? ' (current)' : ''}\n\n`);
       if (b.upstream) md.appendMarkdown(`Tracking \`${b.upstream}\`${b.track ? ` — ${b.track}` : ''}\n\n`);
@@ -231,25 +320,27 @@ function toTreeItem(node) {
     }
     case 'remote': {
       const item = new vscode.TreeItem(node.name, node.name === 'origin' ? T.Expanded : T.Collapsed);
-      item.description = node.url;
-      item.iconPath = icon('cloud');
+      const { host, path: repoPath } = remoteLabel(node.url);
+      item.description = repoPath;
+      item.tooltip = node.url;
+      item.iconPath = host === 'github.com' || host.endsWith('.github.com') ? icon('github') : icon('cloud');
       item.contextValue = 'remote';
       return item;
     }
     case 'stash': {
       const s = node.stash;
       const item = new vscode.TreeItem(s.subject.replace(/^(WIP on|On) [^:]+: /, ''), T.Collapsed);
-      item.description = `${s.ref} · ${s.date}`;
+      item.description = `${s.ref} · ${s.time ? shortAgo(s.time) : s.date}`;
       item.tooltip = `${s.ref}\n${s.subject}\n${s.date}`;
-      item.iconPath = icon('archive');
+      item.iconPath = icon('archive', 'charts.orange');
       item.contextValue = 'stash';
       return item;
     }
     case 'tag': {
       const item = new vscode.TreeItem(node.name, T.Collapsed);
-      item.description = node.date;
+      item.description = node.time ? shortAgo(node.time) : node.date;
       item.tooltip = node.subject ? `${node.name}\n${node.subject}` : node.name;
-      item.iconPath = icon('tag');
+      item.iconPath = icon('tag', 'charts.blue');
       item.contextValue = 'tag';
       return item;
     }
@@ -270,6 +361,14 @@ function toTreeItem(node) {
       if (wt.prunable) md.appendMarkdown('$(warning) Folder is missing; removing it prunes the entry\n\n');
       item.tooltip = md;
       item.contextValue = current ? 'worktree:current' : main ? 'worktree:main' : 'worktree';
+      return item;
+    }
+    case 'branchFolder': {
+      const item = new vscode.TreeItem(node.label, T.Collapsed);
+      item.id = node.id;
+      item.description = String(node.children.length);
+      item.iconPath = icon('folder');
+      item.contextValue = 'branchFolder';
       return item;
     }
     case 'compare': {
@@ -337,6 +436,8 @@ async function nodeChildren(node) {
       return refCommits(node.root, `refs/tags/${node.name}`, 'tags');
     case 'remote':
       return remoteBranches(node);
+    case 'branchFolder':
+      return node.children;
     case 'stash': {
       const changes = g.parseNameStatus(await g.git(node.root, ['stash', 'show', '--name-status', node.stash.ref]));
       return changes.map((change) => fileNode('stashFile', { root: node.root, stash: node.stash }, change));
@@ -395,13 +496,16 @@ async function branchesRoot(view) {
   const out = await g.git(root, [
     'for-each-ref',
     '--sort=-committerdate',
-    `--format=%(refname:short)${SEP}%(upstream:short)${SEP}%(upstream:track,nobracket)${SEP}%(committerdate:relative)${SEP}%(subject)${SEP}%(HEAD)`,
+    `--format=%(refname:short)${SEP}%(upstream:short)${SEP}%(upstream:track,nobracket)${SEP}%(committerdate:relative)${SEP}%(subject)${SEP}%(HEAD)${SEP}%(committerdate:unix)`,
     'refs/heads',
   ]);
-  const branches = rows(out).map(([name, upstream, track, date, subject, head]) => ({ name, upstream, track: formatTrack(track), date, subject, current: head === '*' }));
+  const branches = rows(out).map(([name, upstream, track, date, subject, head, time]) => ({ name, upstream, track: formatTrack(track), date, subject, current: head === '*', time: Number(time) || undefined }));
   branches.sort((a, b) => Number(b.current) - Number(a.current));
   view.tree.description = plural(branches.length, 'branch').replace('branchs', 'branches');
-  return branches.map((branch) => ({ type: 'branch', root, branch, ref: `refs/heads/${branch.name}`, view: 'branches' }));
+  return groupBranches(
+    branches.map((branch) => ({ type: 'branch', root, branch, ref: `refs/heads/${branch.name}`, view: 'branches' })),
+    (n) => n.branch.name
+  );
 }
 
 async function remotesRoot(view) {
@@ -418,18 +522,20 @@ async function remotesRoot(view) {
 }
 
 async function remoteBranches(node) {
-  const out = await g.git(node.root, ['for-each-ref', '--sort=-committerdate', `--format=%(refname:short)${SEP}%(committerdate:relative)${SEP}%(subject)`, `refs/remotes/${node.name}`]);
-  return rows(out)
+  const out = await g.git(node.root, ['for-each-ref', '--sort=-committerdate', `--format=%(refname:short)${SEP}%(committerdate:relative)${SEP}%(subject)${SEP}%(committerdate:unix)`, `refs/remotes/${node.name}`]);
+  const nodes = rows(out)
     .filter(([name]) => name !== node.name && !name.endsWith('/HEAD'))
-    .map(([name, date, subject]) => ({ type: 'branch', root: node.root, remote: true, branch: { name, date, subject }, ref: `refs/remotes/${name}`, view: 'remotes' }));
+    .map(([name, date, subject, time]) => ({ type: 'branch', root: node.root, remote: true, branch: { name, date, subject, time: Number(time) || undefined }, ref: `refs/remotes/${name}`, view: 'remotes' }));
+  return groupBranches(nodes, (n) => n.branch.name.slice(n.branch.name.indexOf('/') + 1));
 }
 
 async function stashesRoot(view) {
   const repo = repoOrMessage(view);
   if (!repo) return [];
   const root = repo.rootUri.fsPath;
-  const stashes = rows(await g.git(root, ['stash', 'list', '--format=%gd%x1f%H%x1f%ar%x1f%s'])).map(([ref, hash, date, subject]) => ({ ref, hash, date, subject }));
+  const stashes = rows(await g.git(root, ['stash', 'list', '--format=%gd%x1f%H%x1f%ar%x1f%s%x1f%at'])).map(([ref, hash, date, subject, time]) => ({ ref, hash, date, subject, time: Number(time) || undefined }));
   if (!stashes.length) view.tree.message = 'No stashes.';
+  view.tree.description = stashes.length ? String(stashes.length) : undefined;
   return stashes.map((stash) => ({ type: 'stash', root, stash }));
 }
 
@@ -437,9 +543,10 @@ async function tagsRoot(view) {
   const repo = repoOrMessage(view);
   if (!repo) return [];
   const root = repo.rootUri.fsPath;
-  const tags = rows(await g.git(root, ['for-each-ref', '--sort=-creatordate', `--format=%(refname:short)${SEP}%(creatordate:relative)${SEP}%(subject)`, 'refs/tags']));
+  const tags = rows(await g.git(root, ['for-each-ref', '--sort=-creatordate', `--format=%(refname:short)${SEP}%(creatordate:relative)${SEP}%(subject)${SEP}%(creatordate:unix)`, 'refs/tags']));
   if (!tags.length) view.tree.message = 'No tags.';
-  return tags.map(([name, date, subject]) => ({ type: 'tag', root, name, date, subject }));
+  view.tree.description = tags.length ? String(tags.length) : undefined;
+  return tags.map(([name, date, subject, time]) => ({ type: 'tag', root, name, date, subject, time: Number(time) || undefined }));
 }
 
 async function worktreesRoot(view) {
@@ -1028,4 +1135,4 @@ function addSearch(root, label, query, args) {
   return focus('search');
 }
 
-module.exports = { register, refreshAll, addSearch, gh, VIEW, SEARCH_MODES, formatTrack, relativeDate, checksState, classifyPr, groupLaunchpad };
+module.exports = { register, refreshAll, addSearch, gh, VIEW, shortAgo, commitType, remoteLabel, groupBranches, SEARCH_MODES, formatTrack, relativeDate, checksState, classifyPr, groupLaunchpad };

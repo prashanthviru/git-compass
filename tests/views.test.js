@@ -239,3 +239,21 @@ test('formatTrack and relativeDate', () => {
   assert.equal(views.relativeDate(new Date(Date.now() - 2 * 86400e3).toISOString()), '2 days ago');
   assert.equal(views.relativeDate(new Date().toISOString()), 'just now');
 });
+
+test('tree helpers: short times, commit types, remote labels and branch folders', () => {
+  const v = require('../views');
+  const now = Math.floor(Date.now() / 1000);
+  assert.equal(v.shortAgo(now - 30), 'now');
+  assert.equal(v.shortAgo(now - 28 * 60), '28m');
+  assert.equal(v.shortAgo(now - 3 * 86400), '3d');
+  assert.equal(v.shortAgo(new Date((now - 2 * 3600) * 1000).toISOString()), '2h');
+  assert.equal(v.commitType('feat(ai): add search'), 'feat');
+  assert.equal(v.commitType('fix!: breaking'), 'fix');
+  assert.equal(v.commitType('Update README'), undefined);
+  assert.deepEqual(v.remoteLabel('https://github.com/prashanthviru/git-compass.git'), { host: 'github.com', path: 'prashanthviru/git-compass' });
+  assert.deepEqual(v.remoteLabel('git@github.com:owner/repo.git'), { host: 'github.com', path: 'owner/repo' });
+  const node = (name, current = false) => ({ type: 'branch', view: 'remotes', remote: true, ref: `refs/remotes/origin/${name}`, branch: { name: `origin/${name}`, current } });
+  const grouped = v.groupBranches([node('main'), node('dependabot/a'), node('dependabot/b'), node('feature/x')], (n) => n.branch.name.slice(7));
+  assert.deepEqual(grouped.map((n) => n.type === 'branchFolder' ? `folder:${n.label}:${n.children.length}` : n.branch.name), ['origin/main', 'folder:dependabot:2', 'origin/feature/x']);
+  assert.equal(grouped[1].id, 'remotes:folder:origin/dependabot');
+});

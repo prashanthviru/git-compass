@@ -75,12 +75,12 @@
         {
           "id": "gitCompass",
           "title": "Git Compass",
-          "icon": "resources/git-compass.svg"
+          "icon": "resources/activitybar/compass.svg"
         },
         {
           "id": "gitCompassInspect",
           "title": "Git Compass Inspect",
-          "icon": "resources/git-compass-inspect.svg"
+          "icon": "resources/activitybar/inspect.svg"
         }
       ]
     },
@@ -106,24 +106,28 @@
         },
         {
           "id": "gitCompass.views.remotes",
+          "visibility": "collapsed",
           "name": "Remotes",
           "contextualTitle": "Git Compass",
           "when": "config.gitCompass.views.remotes.enabled"
         },
         {
           "id": "gitCompass.views.stashes",
+          "visibility": "collapsed",
           "name": "Stashes",
           "contextualTitle": "Git Compass",
           "when": "config.gitCompass.views.stashes.enabled"
         },
         {
           "id": "gitCompass.views.tags",
+          "visibility": "collapsed",
           "name": "Tags",
           "contextualTitle": "Git Compass",
           "when": "config.gitCompass.views.tags.enabled"
         },
         {
           "id": "gitCompass.views.worktrees",
+          "visibility": "collapsed",
           "name": "Worktrees",
           "contextualTitle": "Git Compass",
           "when": "config.gitCompass.views.worktrees.enabled"
@@ -1089,7 +1093,7 @@
         },
         {
           "command": "gitCompass.copyName",
-          "when": "viewItem =~ /^(branch|tag)/",
+          "when": "viewItem =~ /^(branch:|tag$)/",
           "group": "2_copy@1"
         },
         {
@@ -1538,6 +1542,11 @@
             "default": true,
             "description": "Show blame for the current line at the end of the line, with a hover card."
           },
+          "gitCompass.currentLine.format": {
+            "type": "string",
+            "default": "${author}, ${ago} • ${message}",
+            "markdownDescription": "Text of the current-line blame. Use `${author}`, `${ago}`, `${date}`, `${message}` and `${sha}`. Change its colour with `gitCompass.currentLineBlame.foreground` in `workbench.colorCustomizations`."
+          },
           "gitCompass.statusBarBlame.enabled": {
             "type": "boolean",
             "default": true,
@@ -1735,6 +1744,18 @@
             "minimum": 5,
             "description": "How long to wait for an answer before giving up."
           }
+        }
+      }
+    ],
+    "colors": [
+      {
+        "id": "gitCompass.currentLineBlame.foreground",
+        "description": "Colour of the blame text shown at the end of the current line.",
+        "defaults": {
+          "dark": "#9d9d9d8c",
+          "light": "#6e6e6e99",
+          "highContrast": "#ffffffb3",
+          "highContrastLight": "#292929b3"
         }
       }
     ],

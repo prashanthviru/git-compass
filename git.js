@@ -369,22 +369,45 @@ async function showWholeCommit(root, hash) {
   await vscode.window.showTextDocument(doc, { preview: true });
 }
 
-function commitTooltip(commit, links) {
+const LINK_ICONS = {
+  'Open Changes': 'git-compare',
+  'Open Previous Revision': 'history',
+  'Show Commit': 'git-commit',
+  'Copy SHA': 'copy',
+};
+
+// Hover card for a commit: who and when, the message, refs and size, then actions.
+function commitTooltip(commit, links = []) {
   const md = new vscode.MarkdownString('', true);
-  md.isTrusted = true;
+  // Only the commands this card links to may run from it.
+  md.isTrusted = { enabledCommands: [...new Set(links.map((l) => l.command))] };
   md.appendMarkdown('$(account) **');
   md.appendText(commit.author);
-  md.appendMarkdown(`**, ${commit.date} _(${new Date(commit.iso).toLocaleString()})_\n\n`);
+  md.appendMarkdown(`** · ${commit.date}`);
+  if (commit.iso) md.appendMarkdown(` · _${new Date(commit.iso).toLocaleString()}_`);
+  md.appendMarkdown('\n\n**');
   md.appendText(commit.subject);
+  md.appendMarkdown('**');
   if (commit.body) {
     md.appendMarkdown('\n\n');
     md.appendText(commit.body);
   }
-  const refs = (commit.refs || []).filter((r) => r && r !== 'HEAD');
-  if (refs.length) md.appendMarkdown(`\n\n$(tag) ${refs.map((r) => `\`${r.replace(/^HEAD -> /, '')}\``).join(' ')}`);
-  if (commit.stats) md.appendMarkdown(`\n\n$(diff) +${commit.stats.additions} −${commit.stats.deletions}`);
-  md.appendMarkdown(`\n\n---\n\n$(git-commit) \`${commit.short}\``);
-  if (links?.length) md.appendMarkdown(' · ' + links.map((l) => `[${l.title}](${commandLink(l.command, l.args)})`).join(' · '));
+  const facts = [`$(git-commit) \`${commit.short}\``];
+  if (commit.stats) facts.push(`$(diff) +${commit.stats.additions} −${commit.stats.deletions}`);
+  const refs = (commit.refs || []).filter((r) => r && r !== 'HEAD').map((r) => r.replace(/^HEAD -> /, ''));
+  if (refs.length) facts.push(`$(tag) ${refs.map((r) => `\`${r}\``).join(' ')}`);
+  md.appendMarkdown(`\n\n${facts.join(' &nbsp;·&nbsp; ')}`);
+  if (links.length) {
+    md.appendMarkdown('\n\n---\n\n');
+    md.appendMarkdown(
+      links
+        .map((l) => {
+          const icon = l.icon || LINK_ICONS[l.title];
+          return `[${icon ? `$(${icon}) ` : ''}${l.title}](${commandLink(l.command, l.args)} "${l.title}")`;
+        })
+        .join(' &nbsp;&nbsp; ')
+    );
+  }
   return md;
 }
 

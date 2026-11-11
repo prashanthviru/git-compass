@@ -4,6 +4,33 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+- Current-line blame moves with the cursor without flickering: once a file's blame is loaded, the new line is drawn immediately instead of being cleared and redrawn.
+- Softer current-line blame colour that suits light, dark and high-contrast themes, with long commit messages shortened. Change the colour with `gitCompass.currentLineBlame.foreground` in `workbench.colorCustomizations`.
+- New `gitCompass.currentLine.format` setting, for example `${author}, ${ago} • ${message}` or `${sha} ${message}`.
+- Clearer blame hover card: author and date, the commit message in bold, then the SHA, size and refs, with icon buttons for Open Changes, Previous Revision, Show Commit and Copy SHA.
+- Modern side bar:
+  - Commits show an icon and colour for their type (feat, fix, perf, refactor, docs, test, ci, build, chore, release, revert), merge commits in purple and unpushed commits in yellow, with a short age ("28m", "3d") and any tags.
+  - The current branch is green. Branches whose names share a prefix (`dependabot/…`, `feature/…`) are grouped in a folder.
+  - Remotes show a GitHub icon and `owner/repo` instead of the full URL.
+  - Tags and stashes have colour and a count.
+  - Remotes, Stashes, Tags and Worktrees start collapsed, so the side bar opens on Commits and Branches.
+- New Git Compass activity bar icon: a compass needle that stays clear at small sizes and is easy to tell apart from VS Code's Source Control icon.
+
+- Redesigned Visual File History:
+  - Summary cards for commits, authors, lines changed and last change.
+  - An activity chart fitted to the file's real date range. Click a bar to see only those commits.
+  - A calendar heat map: one square per day, darker on days with more changes. Hover for the day's totals, and click a day to list its commits. It always ends at today and shows as many weeks as fit the panel.
+  - Author chips with initials; click one to filter.
+  - A commit list grouped by day, with the SHA, age and a small added/removed bar. Click a commit to open its diff, or use "Commit" to see the whole commit.
+  - Works in narrow side panels, and long histories load 60 commits at a time.
+
+### Fixed
+- Visual File History says "1 commit by 1 author" instead of "1 commits".
+
+### Security
+- Links in hover cards can only run the commands shown on that card.
+
 ## [0.2.1] - 2026-11-11
 
 ### Security

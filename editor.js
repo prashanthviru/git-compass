@@ -20,6 +20,7 @@ const UNITS = [
 const blameCache = new Map();
 const commitCache = new Map();
 const userNames = new Map();
+const userNameValues = new Map();
 const annotations = new Map();
 const historyCache = new Map();
 
@@ -132,6 +133,10 @@ function userName(root) {
         .git(root, ['config', 'user.name'])
         .then((s) => s.trim())
         .catch(() => '')
+        .then((name) => {
+          userNameValues.set(root, name);
+          return name;
+        })
     );
   }
   return userNames.get(root);
@@ -161,9 +166,13 @@ function fullBlame(doc, info) {
   const key = doc.uri.toString();
   const cached = blameCache.get(key);
   if (cached && cached.version === doc.version) return cached.promise;
-  const promise = runBlame(doc, info);
-  blameCache.set(key, { version: doc.version, promise });
-  return promise;
+  const entry = { version: doc.version, promise: undefined, value: undefined };
+  entry.promise = runBlame(doc, info).then((blame) => {
+    entry.value = blame;
+    return blame;
+  });
+  blameCache.set(key, entry);
+  return entry.promise;
 }
 
 async function blameLine(doc, info, line) {
@@ -195,39 +204,68 @@ function scheduleLine(delay = 150) {
   lineTimer = setTimeout(() => updateLine().catch(() => {}), delay);
 }
 
+let lineEditor;
+
 function clearLine() {
   for (const editor of vscode.window.visibleTextEditors) editor.setDecorations(lineDecoration, []);
+  lineEditor = undefined;
 }
 
-async function updateLine() {
-  const token = ++lineToken;
+const MAX_MESSAGE = 72;
+
+function truncate(text, max) {
+  const t = String(text || '').trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
+// Fills the gitCompass.currentLine.format template. Unknown ${tokens} are left as typed.
+function formatLine(template, c, who) {
+  if (c.uncommitted) return `${who} • Uncommitted changes`;
+  const values = {
+    author: who,
+    ago: relativeTime(c.time),
+    date: new Date(c.time * 1000).toLocaleDateString(),
+    message: truncate(c.summary, MAX_MESSAGE),
+    sha: c.short || String(c.hash).slice(0, 7),
+  };
+  return String(template || DEFAULT_LINE_FORMAT).replace(/\$\{(\w+)\}/g, (m, key) => (key in values ? values[key] : m));
+}
+
+const DEFAULT_LINE_FORMAT = '${author}, ${ago} • ${message}';
+
+function lineSettings() {
   const cfg = g.config();
-  const showLine = cfg.get('currentLine.enabled', true);
-  const showStatus = cfg.get('statusBarBlame.enabled', true);
-  const editor = vscode.window.activeTextEditor;
-  clearLine();
-  const info = editor && editor.selections.length === 1 ? docInfo(editor.document) : undefined;
-  if (!info || (!showLine && !showStatus)) {
-    statusItem.hide();
-    return;
-  }
+  return {
+    showLine: cfg.get('currentLine.enabled', true),
+    showStatus: cfg.get('statusBarBlame.enabled', true),
+    format: cfg.get('currentLine.format', DEFAULT_LINE_FORMAT),
+  };
+}
+
+function authorNow(root, c) {
+  if (c.uncommitted || UNCOMMITTED.test(c.hash)) return 'You';
+  const me = userNameValues.get(root);
+  if (me === undefined) return undefined;
+  return c.author && c.author === me ? 'You' : c.author;
+}
+
+function renderLine(editor, info, line, c, who, settings) {
   const doc = editor.document;
-  const line = editor.selection.active.line;
-  const c = await blameLine(doc, info, line);
-  if (token !== lineToken) return;
-  if (!c) {
-    statusItem.hide();
-    return;
-  }
-  const who = await displayAuthor(info.root, c);
-  if (token !== lineToken || line >= doc.lineCount) return;
-  const when = c.uncommitted ? '' : relativeTime(c.time);
-  if (showLine) {
+  if (line >= doc.lineCount) return;
+  if (lineEditor && lineEditor !== editor) lineEditor.setDecorations(lineDecoration, []);
+  if (settings.showLine) {
     const end = doc.lineAt(line).range.end;
-    const contentText = c.uncommitted ? `${who} • Uncommitted changes` : `${who}, ${when} • ${c.summary}`;
-    editor.setDecorations(lineDecoration, [{ range: new vscode.Range(end, end), renderOptions: { after: { contentText } } }]);
+    // setDecorations replaces the previous range in one step, so the text moves
+    // between lines without being cleared first (no flicker).
+    editor.setDecorations(lineDecoration, [
+      { range: new vscode.Range(end, end), renderOptions: { after: { contentText: formatLine(settings.format, c, who) } } },
+    ]);
+    lineEditor = editor;
+  } else {
+    editor.setDecorations(lineDecoration, []);
   }
-  if (showStatus) {
+  if (settings.showStatus) {
+    const when = c.uncommitted ? '' : relativeTime(c.time);
     statusItem.text = c.uncommitted ? `$(git-commit) ${who} • Uncommitted` : `$(git-commit) ${who}, ${when}`;
     statusItem.tooltip = c.uncommitted ? 'Open working changes' : `${c.summary}\n\nClick to show the commit`;
     statusItem.command = c.uncommitted
@@ -239,12 +277,58 @@ async function updateLine() {
   }
 }
 
+// When the file's blame is already loaded, draw the new line straight away instead of
+// waiting for the debounce. Returns false when it has to be loaded first.
+function renderLineNow(editor) {
+  const settings = lineSettings();
+  if (!settings.showLine && !settings.showStatus) return false;
+  if (editor.selections.length !== 1) return false;
+  const doc = editor.document;
+  const cached = blameCache.get(doc.uri.toString());
+  if (!cached || cached.version !== doc.version || !cached.value) return false;
+  const info = docInfo(doc);
+  if (!info) return false;
+  const line = editor.selection.active.line;
+  const c = lineInfo(cached.value, line);
+  if (!c) return false;
+  const who = authorNow(info.root, c);
+  if (who === undefined) return false;
+  ++lineToken;
+  clearTimeout(lineTimer);
+  renderLine(editor, info, line, c, who, settings);
+  return true;
+}
+
+async function updateLine() {
+  const token = ++lineToken;
+  const settings = lineSettings();
+  const editor = vscode.window.activeTextEditor;
+  const info = editor && editor.selections.length === 1 ? docInfo(editor.document) : undefined;
+  if (!info || (!settings.showLine && !settings.showStatus)) {
+    clearLine();
+    statusItem.hide();
+    return;
+  }
+  const doc = editor.document;
+  const line = editor.selection.active.line;
+  const c = await blameLine(doc, info, line);
+  if (token !== lineToken) return;
+  if (!c) {
+    clearLine();
+    statusItem.hide();
+    return;
+  }
+  const who = await displayAuthor(info.root, c);
+  if (token !== lineToken) return;
+  renderLine(editor, info, line, c, who, settings);
+}
+
 async function blameHover(info, c) {
   if (c.uncommitted) {
     const md = new vscode.MarkdownString('', true);
-    md.isTrusted = true;
+    md.isTrusted = { enabledCommands: ['gitCompass.blame.openWorkingChanges'] };
     md.appendMarkdown(
-      `$(account) **You** · Uncommitted changes\n\n[Open Changes](${g.commandLink('gitCompass.blame.openWorkingChanges', [info.root, info.rel])})`
+      `$(account) **You** · Uncommitted changes\n\n---\n\n[$(git-compare) Open Changes](${g.commandLink('gitCompass.blame.openWorkingChanges', [info.root, info.rel])} "Compare with HEAD")`
     );
     return md;
   }
@@ -602,7 +686,7 @@ function heatColor(step) {
 
 function createDecorations(context) {
   lineDecoration = vscode.window.createTextEditorDecorationType({
-    after: { margin: '0 0 0 3em', color: new vscode.ThemeColor('editorCodeLens.foreground'), fontStyle: 'italic' },
+    after: { margin: '0 0 0 3em', color: new vscode.ThemeColor('gitCompass.currentLineBlame.foreground'), fontStyle: 'italic', fontWeight: 'normal' },
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
   });
   blameType = vscode.window.createTextEditorDecorationType({
@@ -701,10 +785,11 @@ async function register(context) {
     vscode.languages.registerHoverProvider({ scheme: 'file' }, hoverProvider),
     vscode.languages.registerCodeLensProvider({ scheme: 'file' }, codeLensProvider),
     vscode.window.onDidChangeTextEditorSelection((e) => {
-      if (e.textEditor === vscode.window.activeTextEditor) scheduleLine();
+      if (e.textEditor !== vscode.window.activeTextEditor) return;
+      if (!renderLineNow(e.textEditor)) scheduleLine();
     }),
-    vscode.window.onDidChangeActiveTextEditor(() => {
-      scheduleLine(0);
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (!editor || !renderLineNow(editor)) scheduleLine(0);
       updateAnnotationContext();
       scheduleNav();
     }),
@@ -742,4 +827,4 @@ async function register(context) {
   updateAnnotationContext();
 }
 
-module.exports = { register, parseBlame, parseDiffHunks, relativeTime, heatBuckets, gutterLabel, lineInfo };
+module.exports = { register, formatLine, truncate, parseBlame, parseDiffHunks, relativeTime, heatBuckets, gutterLabel, lineInfo };

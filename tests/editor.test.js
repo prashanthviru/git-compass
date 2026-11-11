@@ -70,3 +70,14 @@ test('gutterLabel has a fixed width and truncates long names', () => {
   assert.equal(long.length, 30);
   assert.ok(long.includes('…'));
 });
+
+test('current-line blame text follows the format setting', () => {
+  const { formatLine, truncate } = require('../editor');
+  const now = Math.floor(Date.now() / 1000);
+  const c = { hash: 'a'.repeat(40), short: 'aaaaaaa', time: now - 3 * 3600, summary: 'feat: add login', uncommitted: false };
+  assert.equal(formatLine('${author}, ${ago} • ${message}', c, 'You'), 'You, 3 hours ago • feat: add login');
+  assert.equal(formatLine('${sha} ${author} ${unknown}', c, 'Ann'), 'aaaaaaa Ann ${unknown}');
+  assert.equal(formatLine('${author}', { ...c, uncommitted: true }, 'You'), 'You • Uncommitted changes');
+  assert.equal(formatLine('${message}', { ...c, summary: 'x'.repeat(100) }, 'Ann').length, 72);
+  assert.equal(truncate('  short  ', 10), 'short');
+});
