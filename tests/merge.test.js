@@ -22,10 +22,11 @@ function twoBranches({ conflict = false } = {}) {
 test.beforeEach(() => reset());
 
 test('merge strategy argv', () => {
-  assert.deepStrictEqual(pr.mergeArgs('noff', 'feature'), ['merge', '--no-ff', '--no-edit', 'feature']);
-  assert.deepStrictEqual(pr.mergeArgs('ffonly', 'origin/x'), ['merge', '--ff-only', 'origin/x']);
-  assert.deepStrictEqual(pr.mergeArgs('squash', 'feature'), ['merge', '--squash', 'feature']);
-  assert.deepStrictEqual(pr.mergeArgs('default', 'feature'), ['merge', '--no-edit', 'feature']);
+  assert.deepStrictEqual(pr.mergeArgs('noff', '--orphan=x').slice(-2), ['--end-of-options', '--orphan=x']);
+  assert.deepStrictEqual(pr.mergeArgs('noff', 'feature'), ['merge', '--no-ff', '--no-edit', '--end-of-options', 'feature']);
+  assert.deepStrictEqual(pr.mergeArgs('ffonly', 'origin/x'), ['merge', '--ff-only', '--end-of-options', 'origin/x']);
+  assert.deepStrictEqual(pr.mergeArgs('squash', 'feature'), ['merge', '--squash', '--end-of-options', 'feature']);
+  assert.deepStrictEqual(pr.mergeArgs('default', 'feature'), ['merge', '--no-edit', '--end-of-options', 'feature']);
   assert.deepStrictEqual(pr.BRANCH_STRATEGIES.map((s) => s.id), ['noff', 'ffonly', 'squash', 'default']);
 });
 

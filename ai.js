@@ -88,8 +88,15 @@ function repoFromArg(arg) {
   return repo;
 }
 
+// AI answers can be steered by text inside the diffs they read. The Markdown preview
+// would load remote images, which could leak that context to a third-party server,
+// so turn remote images into plain links before showing the answer.
+function stripRemoteImages(text) {
+  return String(text).replace(/!\[([^\]]*)\]\(\s*<?((?:https?:)?\/\/[^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/gi, '[$1]($2)').replace(/<img\b[^>]*>/gi, '');
+}
+
 async function showMarkdown(content, preview = true) {
-  const doc = await vscode.workspace.openTextDocument({ content, language: 'markdown' });
+  const doc = await vscode.workspace.openTextDocument({ content: stripRemoteImages(content), language: 'markdown' });
   await vscode.window.showTextDocument(doc, { preview: false });
   if (preview) await vscode.commands.executeCommand('markdown.showPreview', doc.uri);
   return doc;
@@ -471,7 +478,7 @@ async function search() {
   if (!query) return;
   const [me, authors] = await Promise.all([
     g.git(root, ['config', 'user.name']).catch(() => ''),
-    g.git(root, ['shortlog', '-sn', '--no-merges', '-n', 'HEAD']).catch(() => ''),
+    g.git(root, ['shortlog', '-sn', '--no-merges', '--max-count=5000', 'HEAD']).catch(() => ''),
   ]);
   const context = [
     `Request: ${query}`,
@@ -581,7 +588,7 @@ async function startWork() {
   );
   if (!where) return;
   if (where.value === 'switch') {
-    await g.git(root, ['switch', '--no-track', '-c', name, base]);
+    await g.git(root, ['switch', '--no-track', '-c', name, '--end-of-options', base]);
     vscode.window.setStatusBarMessage(`Switched to ${name}`, 4000);
   } else {
     const list = g.parseWorktrees(await g.git(root, ['worktree', 'list', '--porcelain']));
@@ -589,7 +596,7 @@ async function startWork() {
     const target = await vscode.window.showInputBox({ title: `Worktree for ${name}`, prompt: 'Folder for the worktree', value: `${main}-${name.split('/').pop()}` });
     if (!target) return;
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating worktree ${path.basename(target)}…` }, () =>
-      g.git(root, ['worktree', 'add', '--no-track', '-b', name, target, base])
+      g.git(root, ['worktree', 'add', '--no-track', '-b', name, '--end-of-options', target, base])
     );
     if ((await vscode.window.showInformationMessage(`Worktree ready at ${target}. Install dependencies there before starting apps.`, 'Open in New Window')) === 'Open in New Window') {
       await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(target), { forceNewWindow: true });
@@ -600,7 +607,7 @@ async function startWork() {
 
 async function startReview() {
   const root = g.requireRepo();
-  const prs = JSON.parse(await gh(root, ['pr', 'list', '--search', 'review-requested:@me', '--state', 'open', '--json', 'number,title,headRefName,url', '--limit', '50']));
+  const prs = JSON.parse(await gh(root, ['pr', 'list', '--search', 'review-requested:@me', '--state', 'open', '--json', 'number,title,headRefName,url,isCrossRepository', '--limit', '50']));
   if (!prs.length) {
     vscode.window.showInformationMessage('No pull requests are waiting for your review.');
     return;
@@ -655,6 +662,7 @@ function register(context) {
 }
 
 module.exports = {
+  stripRemoteImages,
   register,
   ask,
   scrubEnv: providers.scrubEnv,

@@ -85,10 +85,10 @@ function prWarnings(pr) {
 
 function mergeArgs(strategy, ref) {
   return {
-    noff: ['merge', '--no-ff', '--no-edit', ref],
-    ffonly: ['merge', '--ff-only', ref],
-    squash: ['merge', '--squash', ref],
-    default: ['merge', '--no-edit', ref],
+    noff: ['merge', '--no-ff', '--no-edit', '--end-of-options', ref],
+    ffonly: ['merge', '--ff-only', '--end-of-options', ref],
+    squash: ['merge', '--squash', '--end-of-options', ref],
+    default: ['merge', '--no-edit', '--end-of-options', ref],
   }[strategy];
 }
 
@@ -174,7 +174,7 @@ async function confirm(message, detail, action) {
 }
 
 async function pushBranch(root, branch) {
-  await gitEdit(root, pushArgs(branch));
+  await g.remote(root, pushArgs(branch), (repo) => repo.push('origin', branch, true), gitEdit);
 }
 
 async function submitPullRequest(root, branch, form) {
@@ -437,7 +437,7 @@ async function rebaseOnto(root, ref) {
   await requireClean(root, 'rebase');
   let error;
   try {
-    await gitEdit(root, ['rebase', ref]);
+    await gitEdit(root, ['rebase', '--end-of-options', ref]);
   } catch (e) {
     error = e;
   }
@@ -448,7 +448,7 @@ async function updateFromBase(root) {
   const base = (await g.resolveBases(root))[0];
   if (!base) throw new Error('No base branch found. Set gitCompass.baseBranches.');
   await requireClean(root, 'update from the base branch');
-  if (base.startsWith('origin/')) await gitEdit(root, ['fetch', 'origin', baseName(base)]);
+  if (base.startsWith('origin/')) await g.fetchRef(root, baseName(base), gitEdit);
   let error;
   try {
     await gitEdit(root, mergeArgs('default', base));
@@ -501,7 +501,7 @@ async function resolvePrConflicts(node) {
   if (!ok) return undefined;
   await requireClean(root, 'check out the pull request');
   await ghRunner(root, ['pr', 'checkout', String(pr.number)]);
-  await gitEdit(root, ['fetch', 'origin', pr.baseRefName]);
+  await g.fetchRef(root, pr.baseRefName, gitEdit);
   let error;
   try {
     await gitEdit(root, mergeArgs('default', `origin/${pr.baseRefName}`));

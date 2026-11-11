@@ -570,13 +570,13 @@ async function openPrWorktree(node) {
     target = path.join(path.dirname(main), `${path.basename(main)}-pr-${pr.number}`);
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating worktree for #${pr.number}…` }, async () => {
       if (pr.isCrossRepository) {
-        await g.git(root, ['fetch', 'origin', `pull/${pr.number}/head`]);
+        await g.fetchRef(root, `pull/${pr.number}/head`);
         await g.git(root, ['worktree', 'add', '--detach', target, 'FETCH_HEAD']);
         return;
       }
-      await g.git(root, ['fetch', 'origin', pr.headRefName]);
+      await g.fetchRef(root, pr.headRefName);
       const local = await g.refExists(root, `refs/heads/${pr.headRefName}`);
-      await g.git(root, local ? ['worktree', 'add', target, pr.headRefName] : ['worktree', 'add', '--track', '-b', pr.headRefName, target, `origin/${pr.headRefName}`]);
+      await g.git(root, local ? ['worktree', 'add', '--end-of-options', target, pr.headRefName] : ['worktree', 'add', '--track', '-b', pr.headRefName, '--end-of-options', target, `origin/${pr.headRefName}`]);
     });
     views.worktrees.refresh();
   }
@@ -771,11 +771,11 @@ async function deleteBranch(node) {
   const name = node.branch.name;
   if (!(await confirm(`Delete branch "${name}"?`, 'Only the local branch is deleted.', 'Delete'))) return;
   try {
-    await g.git(node.root, ['branch', '-d', name]);
+    await g.git(node.root, ['branch', '-d', '--end-of-options', name]);
   } catch (e) {
     if (!/not fully merged/.test(e.message)) throw e;
     if (!(await confirm(`"${name}" has commits that are not merged anywhere.`, 'Force-deleting loses those commits unless another branch or tag points at them.', 'Force Delete'))) return;
-    await g.git(node.root, ['branch', '-D', name]);
+    await g.git(node.root, ['branch', '-D', '--end-of-options', name]);
   }
   views.branches.refresh();
 }
@@ -899,7 +899,7 @@ function register(context) {
     'worktree.remove': removeWorktree,
     'branch.checkout': async (node) => {
       const name = node.remote ? node.branch.name.slice(node.branch.name.indexOf('/') + 1) : node.branch.name;
-      await vscode.window.withProgress({ location: { viewId: VIEW[node.view] } }, () => g.git(node.root, ['switch', name]));
+      await vscode.window.withProgress({ location: { viewId: VIEW[node.view] } }, () => g.git(node.root, ['switch', '--end-of-options', name]));
       refreshAll();
     },
     'branch.compare': (node) => addComparison(node.root, node.branch.name),
@@ -907,7 +907,7 @@ function register(context) {
     'tag.compare': (node) => addComparison(node.root, node.name),
     'tag.delete': async (node) => {
       if (!(await confirm(`Delete tag "${node.name}"?`, 'Only the local tag is deleted; the remote is untouched.', 'Delete'))) return;
-      await g.git(node.root, ['tag', '-d', node.name]);
+      await g.git(node.root, ['tag', '-d', '--end-of-options', node.name]);
       views.tags.refresh();
     },
     'stash.apply': async (node) => {
@@ -996,9 +996,13 @@ function register(context) {
   launchpadStatus.name = 'Git Compass Launchpad';
   launchpadStatus.command = `${VIEW.launchpad}.focus`;
   context.subscriptions.push(launchpadStatus);
+  let lastPoll = 0;
   const pollLaunchpad = () => {
     const repo = g.activeRepo();
     if (!repo || !launchpadEnabled()) return launchpadStatus.hide();
+    // Background windows don't need fresh pull request data; catch up when focused again.
+    if (vscode.window.state?.focused === false) return;
+    lastPoll = Date.now();
     loadLaunchpad(repo.rootUri.fsPath, true)
       .then(() => views.launchpad.refresh())
       .catch(() => {});
@@ -1010,7 +1014,12 @@ function register(context) {
       if (e.affectsConfiguration('gitCompass.launchpad') || e.affectsConfiguration('gitCompass.views.launchpad')) pollLaunchpad();
     })
   );
-  context.subscriptions.push({ dispose: () => clearInterval(timer) });
+  context.subscriptions.push(
+    { dispose: () => clearInterval(timer) },
+    vscode.window.onDidChangeWindowState((s) => {
+      if (s.focused && Date.now() - lastPoll > 10 * 60e3) pollLaunchpad();
+    })
+  );
 }
 
 function addSearch(root, label, query, args) {

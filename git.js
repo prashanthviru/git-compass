@@ -24,13 +24,41 @@ const STATUS_COLOR = {
 let gitApi;
 const baseCache = new Map();
 
-function git(cwd, args, { input } = {}) {
+// Use the git that VS Code's Git extension found (git.path setting, Windows install
+// folders, GitHub Desktop, ...), not only whatever is on PATH.
+function gitPath() {
+  return gitApi?.git?.path || 'git';
+}
+
+// LANGUAGE=en keeps git's messages in English so the few we match on (for example
+// "not fully merged") work in every locale, without changing the character encoding.
+function gitEnv(extra = {}) {
+  return { ...process.env, LANGUAGE: 'en', ...extra };
+}
+
+function gitError(err, stderr, stdout = '') {
+  if (err.code === 'ENOENT') {
+    return Object.assign(new Error('Git was not found. Install Git, or set "git.path" to the git executable, then reload the window.'), { code: 'ENOENT' });
+  }
+  return Object.assign(new Error((stderr || stdout || err.message).trim()), { stdout, stderr, code: err.code });
+}
+
+// --no-optional-locks keeps background reads (status, diff) from taking index.lock,
+// so they never make the user's own git commands fail with "index.lock exists".
+// core.quotePath=false returns non-ASCII file names as-is instead of "caf\303\251.txt",
+// and color.ui=false keeps ANSI codes out of output when a user forces color on.
+const GIT_PREFIX = ['--no-optional-locks', '-c', 'core.quotePath=false', '-c', 'color.ui=false'];
+
+function git(cwd, args, { input, signal, maxBuffer = 64 * 1024 * 1024 } = {}) {
   return new Promise((resolve, reject) => {
-    const child = execFile('git', args, { cwd, maxBuffer: 256 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) reject(new Error((stderr || err.message).trim()));
+    const child = execFile(gitPath(), [...GIT_PREFIX, ...args], { cwd, maxBuffer, signal, env: gitEnv(), windowsHide: true }, (err, stdout, stderr) => {
+      if (err) reject(gitError(err, stderr));
       else resolve(stdout);
     });
-    if (input !== undefined) child.stdin.end(input);
+    if (input !== undefined) {
+      child.stdin.on('error', () => {});
+      child.stdin.end(input);
+    }
   });
 }
 
@@ -170,13 +198,59 @@ const decorationProvider = {
   },
 };
 
+let gitMissingShown = false;
+
+// Returns undefined (instead of throwing) when the Git extension is missing or disabled,
+// or Git itself is not installed, so activation never fails.
 async function getGitApi() {
   if (gitApi) return gitApi;
   const ext = vscode.extensions.getExtension('vscode.git');
   if (!ext) return undefined;
-  const exports = ext.isActive ? ext.exports : await ext.activate();
-  gitApi = exports.getAPI(1);
-  return gitApi;
+  try {
+    const exports = ext.isActive ? ext.exports : await ext.activate();
+    if (exports && exports.enabled === false) {
+      notifyGitUnavailable(exports);
+      return undefined;
+    }
+    gitApi = exports.getAPI(1);
+    return gitApi;
+  } catch {
+    notifyGitUnavailable();
+    return undefined;
+  }
+}
+
+function notifyGitUnavailable(exports) {
+  if (gitMissingShown) return;
+  gitMissingShown = true;
+  exports?.onDidChangeEnablement?.((enabled) => {
+    if (!enabled) return;
+    vscode.window.showInformationMessage('Git is available now. Reload the window to start Git Compass.', 'Reload Window').then((pick) => {
+      if (pick) vscode.commands.executeCommand('workbench.action.reloadWindow');
+    });
+  });
+  vscode.window.showWarningMessage('Git Compass needs Git. Install Git, or turn on the "git.enabled" setting, then reload the window.');
+}
+
+const AUTH_ERROR = /terminal prompts disabled|could not read (?:username|password)|authentication failed|permission denied \(publickey|askpass|invalid username or password/i;
+
+// Our git processes cannot show VS Code's sign-in prompt. When a fetch or push fails
+// for lack of credentials (common in Remote SSH and WSL), retry it through the Git
+// extension, which can ask the user.
+async function remote(root, args, viaGitExtension, run = git) {
+  try {
+    return await run(root, args);
+  } catch (e) {
+    const repo = gitApi?.getRepository(vscode.Uri.file(root));
+    if (!repo || !AUTH_ERROR.test(e.message)) throw e;
+    await viaGitExtension(repo);
+    return '';
+  }
+}
+
+function fetchRef(root, ref, run = git) {
+  if (String(ref).startsWith('-')) return Promise.reject(new Error(`Refusing to fetch "${ref}": it looks like a git option.`));
+  return remote(root, ['fetch', '--end-of-options', 'origin', ref], (repo) => repo.fetch({ remote: 'origin', ref }), run);
 }
 
 function repoForUri(uri) {
@@ -282,13 +356,15 @@ function diffCommitFile(root, commit, change, options) {
 }
 
 async function commitFiles(root, hash) {
-  return parseNameStatus(
-    await git(root, ['diff-tree', '-r', '-M', '--root', '--no-commit-id', '--name-status', '--diff-merges=first-parent', hash])
-  );
+  // Merge commits are compared with their first parent. This avoids --diff-merges,
+  // which needs git 2.31 (Debian 11 and Ubuntu 20.04 ship older versions).
+  const parents = (await git(root, ['rev-list', '--parents', '-n', '1', hash, '--'])).trim().split(/\s+/).slice(1);
+  const args = parents.length > 1 ? [`${parents[0]}`, hash] : ['--root', hash];
+  return parseNameStatus(await git(root, ['diff-tree', '-r', '-M', '--no-commit-id', '--name-status', ...args]));
 }
 
 async function showWholeCommit(root, hash) {
-  const content = await git(root, ['show', '--stat', '--patch', '--format=fuller', hash]);
+  const content = await git(root, ['show', '--no-ext-diff', '--stat', '--patch', '--format=fuller', hash]);
   const doc = await vscode.workspace.openTextDocument({ content, language: 'diff' });
   await vscode.window.showTextDocument(doc, { preview: true });
 }
@@ -346,6 +422,11 @@ function registerShared(context) {
 
 module.exports = {
   SCHEME,
+  gitPath,
+  gitEnv,
+  gitError,
+  remote,
+  fetchRef,
   LOG_FORMAT,
   STATUS_LABEL,
   git,

@@ -19,11 +19,16 @@ let refreshTimer;
 function gitEdit(root, args, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     execFile(
-      'git',
+      g.gitPath(),
       args,
-      { cwd: root, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', GIT_MERGE_AUTOEDIT: 'no', GIT_TERMINAL_PROMPT: '0', ...extraEnv } },
+      {
+        cwd: root,
+        maxBuffer: 64 * 1024 * 1024,
+        windowsHide: true,
+        env: g.gitEnv({ GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', GIT_MERGE_AUTOEDIT: 'no', GIT_TERMINAL_PROMPT: '0', ...extraEnv }),
+      },
       (err, stdout, stderr) => {
-        if (err) reject(Object.assign(new Error((stderr || stdout || err.message).trim()), { stdout, stderr, code: err.code }));
+        if (err) reject(g.gitError(err, stderr, stdout));
         else resolve(stdout);
       }
     );
@@ -199,17 +204,24 @@ function nodeFile(node) {
   return { root: node.root, file: node.path, code: node.code };
 }
 
+let refreshToken = 0;
+
 async function refresh() {
+  const token = ++refreshToken;
   const repo = g.activeRepo();
+  let next;
   if (!repo) {
-    current = { op: undefined, files: [], resolved: [], root: undefined };
+    next = { op: undefined, files: [], resolved: [], root: undefined };
   } else {
     try {
-      current = await readState(repo.rootUri.fsPath);
+      next = await readState(repo.rootUri.fsPath);
     } catch {
-      current = { op: undefined, files: [], resolved: [], root: repo.rootUri.fsPath };
+      next = { op: undefined, files: [], resolved: [], root: repo.rootUri.fsPath };
     }
   }
+  // A slower, older refresh must not overwrite a newer one.
+  if (token !== refreshToken) return;
+  current = next;
   const active = !!current.op || current.files.length > 0;
   await vscode.commands.executeCommand('setContext', 'gitCompass.hasConflicts', active);
   await vscode.commands.executeCommand('setContext', 'gitCompass.conflictOperation', current.op?.kind || '');
@@ -323,7 +335,10 @@ async function suggestResolution(node) {
   await vscode.commands.executeCommand('vscode.diff', g.fileUri(root, file), uri, `${path.basename(file)} (working copy ↔ AI suggestion)`);
   const choice = await vscode.window.showInformationMessage(`Apply the suggested resolution to ${file}? It is not staged; review it, then mark the file as resolved.`, 'Apply', 'Discard');
   if (choice === 'Apply') {
-    await fs.promises.writeFile(path.join(root, file), proposal);
+    const target = path.join(root, file);
+    const existing = await fs.promises.readFile(target, 'utf8').catch(() => '');
+    const crlf = existing.includes('\r\n');
+    await fs.promises.writeFile(target, crlf ? proposal.replace(/\r?\n/g, '\r\n') : proposal);
     vscode.window.setStatusBarMessage(`Applied suggestion to ${file}`, 3000);
   }
   proposals.delete(uri.toString());
@@ -413,7 +428,13 @@ function register(context) {
       })
     );
   }
-  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(scheduleRefresh));
+  // Switching editors only matters when it switches to another repository.
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      const root = g.activeRepo()?.rootUri.fsPath;
+      if (!root || !current.root || !g.samePath(root, current.root)) scheduleRefresh();
+    })
+  );
   g.getGitApi()
     .then((api) => {
       if (api) g.onRepoChange(context, scheduleRefresh, 300);

@@ -2,39 +2,32 @@
 
 Find your way around any Git repository from inside VS Code. You get blame, file and line history, a visual history chart, worktrees, branch compare, an interactive rebase editor, a pull request Launchpad and optional AI helpers. Everything is free and works on public and private repositories, with no account or sign-up.
 
-> **Preview.** Git Compass is at 0.1.0 and still being tested. Please [report anything that breaks](https://github.com/prashanthviru/git-compass/issues).
+> **Preview.** Git Compass is at 0.2.1 and still being tested. Please [report anything that breaks](https://github.com/prashanthviru/git-compass/issues).
 
 ## Install
 
-Git Compass isn't on the Marketplace yet. Until it is, install it from a `.vsix` file. You need VS Code 1.90 or newer, or VSCodium.
+You need VS Code 1.90 or newer.
 
-### 1. Get the `.vsix` file
-
-Choose one:
-
-- **Download a build.** Open the [CI workflow runs](https://github.com/prashanthviru/git-compass/actions/workflows/ci.yml), choose the latest successful run on `main`, and download the **git-compass-vsix** artifact. You must be signed in to GitHub to download it. Unzip it to get `git-compass.vsix`.
-- **Build it yourself.** You need Git and Node.js 20 or newer:
+- **From VS Code:** press `Ctrl+Shift+X` (`Cmd+Shift+X` on macOS), search for **Git Compass**, and choose **Install**.
+- **From the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Prashanthviru.git-compass)**, or from a terminal:
 
   ```bash
-  git clone https://github.com/prashanthviru/git-compass.git
-  cd git-compass
-  npm run package
+  code --install-extension Prashanthviru.git-compass
   ```
 
-  This creates `git-compass.vsix` in the folder.
+Two icons appear in the activity bar: **Git Compass** and **Git Compass Inspect**.
 
-### 2. Install it in VS Code
+### Install from a `.vsix` file
 
-- **From the Extensions view:** press `Ctrl+Shift+X` (`Cmd+Shift+X` on macOS), open the **…** menu at the top of the view, choose **Install from VSIX…**, and pick `git-compass.vsix`.
-- **From a terminal:**
+Use this for VSCodium or to try a build from `main`. Download the **git-compass-vsix** artifact from the latest successful [CI workflow run](https://github.com/prashanthviru/git-compass/actions/workflows/ci.yml) (you must be signed in to GitHub), or build it yourself with Git and Node.js 20 or newer:
 
-  ```bash
-  code --install-extension git-compass.vsix
-  ```
+```bash
+git clone https://github.com/prashanthviru/git-compass.git
+cd git-compass
+npm run package
+```
 
-  In VSCodium, use `codium --install-extension git-compass.vsix`.
-
-Then reload the window: open the Command Palette and run **Developer: Reload Window**. Two icons appear in the activity bar: **Git Compass** and **Git Compass Inspect**.
+Then, in the Extensions view, open the **…** menu, choose **Install from VSIX…** and pick `git-compass.vsix`. In VSCodium you can also run `codium --install-extension git-compass.vsix`.
 
 ### 3. First steps
 
@@ -45,12 +38,12 @@ Then reload the window: open the Command Palette and run **Developer: Reload Win
 
 ### Update or uninstall
 
-- **Update:** install the newer `.vsix` the same way. It replaces the old version.
-- **Uninstall:** open the Extensions view, select Git Compass and choose **Uninstall**, or run `code --uninstall-extension prashanthviru.git-compass`.
+- **Update:** VS Code updates Marketplace installs automatically. For a `.vsix`, install the newer file the same way.
+- **Uninstall:** open the Extensions view, select Git Compass and choose **Uninstall**, or run `code --uninstall-extension Prashanthviru.git-compass`.
 
 ## Screenshots
 
-Screenshots and short clips are coming with the first Marketplace release.
+Screenshots and short clips are coming soon.
 
 ## Features
 
@@ -104,12 +97,14 @@ You choose the AI provider and configure it yourself. Run **Git Compass: Set Up 
 
 API keys are stored in VS Code's secret storage, never in settings files. You can also point Git Compass at an environment variable with `gitCompass.ai.apiKeyEnvVar`.
 
+The settings that choose where your code is sent (provider, command-line tool and arguments, API base URLs and `apiKeyEnvVar`) are read only from your user or remote settings. A repository's `.vscode/settings.json` cannot change them.
+
 ## Requirements
-- Git 2.30 or newer on your `PATH`.
+- Git 2.30 or newer. Git Compass uses the same Git as VS Code, including the `git.path` setting.
 - Optional: the [GitHub CLI](https://cli.github.com), signed in with `gh auth login`, for Launchpad, Start Work and Start Review.
 - Optional: an AI provider from the table above.
 
-Git Compass works in VS Code 1.90+ and in VSCodium and other editors that install from Open VSX. In Remote SSH, WSL, Dev Containers and Codespaces it runs on the remote side, next to your repository. It is turned off in untrusted (Restricted Mode) workspaces, because Git can run programs configured by a repository, and it does not support virtual workspaces.
+Git Compass works in VS Code 1.90+ and in VSCodium and other editors that install from Open VSX. In Remote SSH, WSL, Dev Containers and Codespaces it runs on the remote side, next to your repository, so the GitHub CLI, AI command-line tools and local AI servers such as Ollama must be available on that remote machine. It is turned off in untrusted (Restricted Mode) workspaces, because Git can run programs configured by a repository, and it does not support virtual workspaces.
 
 ## Commands
 Open the Command Palette and type **Git Compass**:

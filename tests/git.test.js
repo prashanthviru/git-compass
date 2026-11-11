@@ -165,3 +165,27 @@ test('git reports errors with stderr text', async () => {
   assert.equal(await g.refExists(repo.root, 'no-such-ref'), false);
   assert.equal(await g.refExists(repo.root, 'side'), true);
 });
+
+test('non-ASCII file names come back unquoted', async () => {
+  const r = createRepo();
+  try {
+    r.write('base.txt', 'x\n');
+    r.commit('base');
+    r.write('café/日本.txt', 'hi\n');
+    const sha = r.commit('add unicode file');
+    const files = await g.commitFiles(r.root, sha);
+    assert.deepEqual(files.map((f) => f.path), ['café/日本.txt']);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a missing git binary gives a clear message', () => {
+  const e = g.gitError(Object.assign(new Error('spawn git ENOENT'), { code: 'ENOENT' }), '');
+  assert.match(e.message, /Git was not found/);
+  assert.equal(g.gitError(new Error('x'), 'fatal: bad revision\n').message, 'fatal: bad revision');
+});
+
+test('fetchRef refuses refs that look like options', async () => {
+  await assert.rejects(g.fetchRef(repo.root, '--upload-pack=evil'), /looks like a git option/);
+});

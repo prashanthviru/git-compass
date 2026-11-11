@@ -15,6 +15,29 @@ const optional = (name) => {
 let statusItem;
 let refreshTimer;
 let statusToken = 0;
+const countCache = new Map();
+
+// Counting ahead/behind walks history, which is slow on big repositories. The answer
+// only changes when HEAD or the base moves, so cache it by both commits.
+async function aheadBehind(root, ref, headCommit) {
+  const baseCommit = (await g.git(root, ['rev-parse', '--verify', '-q', `${ref}^{commit}`]).catch(() => '')).trim();
+  const key = `${root}\0${ref}\0${baseCommit}\0${headCommit}`;
+  if (!baseCommit || !headCommit) countCache.delete(key);
+  if (!countCache.has(key)) {
+    if (countCache.size > 50) countCache.clear();
+    countCache.set(
+      key,
+      g.git(root, ['rev-list', '--left-right', '--count', `${ref}...HEAD`]).then((out) => {
+        const [behind, ahead] = out.trim().split(/\s+/).map(Number);
+        return { ref, ahead, behind };
+      })
+    );
+  }
+  return countCache.get(key).catch((e) => {
+    countCache.delete(key);
+    throw e;
+  });
+}
 
 function scheduleStatus() {
   clearTimeout(refreshTimer);
@@ -30,12 +53,7 @@ async function refreshStatus() {
   const { HEAD: head, workingTreeChanges, indexChanges, mergeChanges, untrackedChanges = [] } = repo.state;
   const branch = g.currentBranch(root);
   const changed = new Set([...workingTreeChanges, ...indexChanges, ...mergeChanges, ...untrackedChanges].map((c) => c.uri.toString())).size;
-  const counts = await Promise.all(
-    (await g.resolveBases(root)).map(async (ref) => {
-      const [behind, ahead] = (await g.git(root, ['rev-list', '--left-right', '--count', `${ref}...HEAD`])).trim().split(/\s+/).map(Number);
-      return { ref, ahead, behind };
-    })
-  );
+  const counts = await Promise.all((await g.resolveBases(root)).map((ref) => aheadBehind(root, ref, head?.commit)));
   if (token !== statusToken) return;
   const worktree = path.basename(root);
   const onProtected = !!head?.name && g.config().get('protectedBranches', []).includes(head.name);

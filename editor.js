@@ -340,7 +340,7 @@ async function renderHeatmap(editor, info) {
 async function renderChanges(editor, info) {
   let out = '';
   try {
-    out = await g.git(info.root, ['diff', '-U0', '--no-color', 'HEAD', '--', info.rel]);
+    out = await g.git(info.root, ['diff', '-U0', '--no-color', '--no-ext-diff', 'HEAD', '--', info.rel]);
   } catch {
     return;
   }
@@ -436,7 +436,10 @@ const codeLensProvider = {
   },
   async resolveCodeLens(lens) {
     const { doc, info, range, kind } = lens.meta;
-    const blame = await fullBlame(doc, info);
+    // While the file has unsaved edits, reuse the last blame instead of re-blaming the
+    // whole file after every pause in typing. Lenses refresh on save.
+    const previous = doc.isDirty ? blameCache.get(doc.uri.toString()) : undefined;
+    const blame = await (previous ? previous.promise : fullBlame(doc, info));
     const me = await userName(info.root);
     const authors = new Map();
     let latest;
@@ -553,10 +556,20 @@ async function updateNav() {
     await vscode.commands.executeCommand('setContext', 'gitCompass.canGoNext', false);
     return;
   }
-  const state = await navState(vscode.window.activeTextEditor);
+  const editor = vscode.window.activeTextEditor;
+  let canPrevious;
+  let canNext;
+  if (editor?.document.uri.scheme === 'file') {
+    // Loading the full --follow history here ran on every editor switch; one commit is enough.
+    const info = docInfo(editor.document);
+    canPrevious = !!info && !!(await g.git(info.root, ['log', '-1', '--format=%H', '--', info.rel]).catch(() => '')).trim();
+    canNext = false;
+  } else {
+    const state = await navState(editor);
+    canPrevious = !!state && state.index + 1 < state.history.length;
+    canNext = !!state && state.index >= 0;
+  }
   if (token !== navToken) return;
-  const canPrevious = !!state && state.index + 1 < state.history.length;
-  const canNext = !!state && state.index >= 0;
   await vscode.commands.executeCommand('setContext', 'gitCompass.canGoPrevious', canPrevious);
   await vscode.commands.executeCommand('setContext', 'gitCompass.canGoNext', canNext);
 }
@@ -626,7 +639,20 @@ function createDecorations(context) {
   context.subscriptions.push(lineDecoration, blameType, ...heatTypes, ...Object.values(changeTypes));
 }
 
+let lastHeads = '';
+let repoApi;
+
+function headsKey() {
+  return (repoApi?.repositories || []).map((r) => `${r.rootUri.fsPath}\0${r.state.HEAD?.commit || ''}`).join('\n');
+}
+
+// Repository state changes fire on every save and file-watcher event. Blame and file
+// history only depend on commits (edits are keyed by document version, saves are
+// handled in onDidSaveTextDocument), so only start over when a HEAD moves.
 function onRepoChanged() {
+  const heads = headsKey();
+  if (heads === lastHeads) return;
+  lastHeads = heads;
   blameCache.clear();
   historyCache.clear();
   scheduleLine(0);
@@ -637,6 +663,8 @@ function onRepoChanged() {
 
 async function register(context) {
   const api = await g.getGitApi();
+  repoApi = api;
+  lastHeads = headsKey();
   createDecorations(context);
   statusItem = vscode.window.createStatusBarItem('gitCompass.blame', vscode.StatusBarAlignment.Right, 1000);
   statusItem.name = 'Git Compass Blame';

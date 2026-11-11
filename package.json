@@ -2,9 +2,9 @@
   "name": "git-compass",
   "displayName": "Git Compass",
   "description": "Blame, file and line history, visual history, worktrees, branch compare, a pull request Launchpad and AI commit tools, all free on any repository.",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "preview": true,
-  "publisher": "prashanthviru",
+  "publisher": "Prashanthviru",
   "author": {
     "name": "Prashanth",
     "url": "https://github.com/prashanthviru"
@@ -1638,6 +1638,7 @@
         "order": 6,
         "properties": {
           "gitCompass.ai.provider": {
+            "scope": "machine",
             "type": "string",
             "enum": [
               "none",
@@ -1657,11 +1658,13 @@
             "markdownDescription": "Where AI requests go. Run **Git Compass: Set Up AI Provider** to configure it step by step. Nothing is sent anywhere while this is `none`."
           },
           "gitCompass.ai.cli.command": {
+            "scope": "machine",
             "type": "string",
             "default": "",
             "markdownDescription": "Executable for the `cli` provider, e.g. `claude`, `codex` or a full path."
           },
           "gitCompass.ai.cli.args": {
+            "scope": "machine",
             "type": "array",
             "items": {
               "type": "string"
@@ -1670,6 +1673,7 @@
             "markdownDescription": "Arguments for the command. `{prompt}` is replaced with the prompt text (argument mode only). `{outputFile}` is replaced with a temporary file path; when present, the answer is read from that file instead of standard output."
           },
           "gitCompass.ai.cli.promptInput": {
+            "scope": "machine",
             "type": "string",
             "enum": [
               "stdin",
@@ -1683,6 +1687,7 @@
             "description": "How the command receives the prompt."
           },
           "gitCompass.ai.openaiCompatible.baseUrl": {
+            "scope": "machine",
             "type": "string",
             "default": "https://api.openai.com/v1",
             "markdownDescription": "Base URL of an OpenAI-compatible API (the part before `/chat/completions`), e.g. `https://openrouter.ai/api/v1` or `http://localhost:11434/v1`."
@@ -1693,6 +1698,7 @@
             "description": "Model ID exactly as your provider lists it."
           },
           "gitCompass.ai.anthropic.baseUrl": {
+            "scope": "machine",
             "type": "string",
             "default": "https://api.anthropic.com",
             "description": "Base URL of the Anthropic API or a compatible proxy."
@@ -1713,6 +1719,7 @@
             "description": "Optional language model family. Empty uses any family from the vendor."
           },
           "gitCompass.ai.apiKeyEnvVar": {
+            "scope": "machine",
             "type": "string",
             "default": "",
             "markdownDescription": "Optional name of an environment variable holding the API key (e.g. `OPENROUTER_API_KEY`), used when no key is stored. Keys set with **Git Compass: Set AI API Key** live in VS Code secret storage, never in settings."

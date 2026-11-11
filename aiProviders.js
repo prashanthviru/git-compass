@@ -96,7 +96,12 @@ function hostOf(url) {
 
 function secretKeyFor(provider, baseUrl) {
   if (provider === 'openaiCompatible') return `gitCompass.ai.key.openaiCompatible:${hostOf(baseUrl)}`;
-  if (provider === 'anthropic') return 'gitCompass.ai.key.anthropic';
+  if (provider === 'anthropic') {
+    // Keyed by host so a changed base URL can never receive the key saved for another server.
+    // The official host keeps the original key name, so existing setups keep working.
+    const host = hostOf(baseUrl || 'https://api.anthropic.com');
+    return host === 'api.anthropic.com' ? 'gitCompass.ai.key.anthropic' : `gitCompass.ai.key.anthropic:${host}`;
+  }
   return undefined;
 }
 
@@ -135,7 +140,8 @@ function truncateContext(text, max = 120000) {
 }
 
 function stripAnsi(text) {
-  return text.replace(/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[@-Z\\-_]/g, '');
+  // Also normalise Windows line endings so fences and prompts parse the same everywhere.
+  return text.replace(/\r\n?/g, '\n').replace(/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[@-Z\\-_]/g, '');
 }
 
 function redact(text, values = []) {
@@ -164,6 +170,17 @@ function planCli({ command, args, promptInput }, fullPrompt, { platform = proces
   const inArgument = promptInput === 'argument' && !shell && fullPrompt.length <= ARG_LIMIT;
   const expanded = args.map((a) => a.replace(/\{outputFile\}/g, outputFile || '').replace(/\{prompt\}/g, inArgument ? fullPrompt : STDIN_HINT));
   const stdin = inArgument ? '' : fullPrompt;
+  if (shell) {
+    // cmd.exe has no reliable escape for these characters inside quotes, so refuse them
+    // instead of risking that part of an argument runs as a separate command.
+    const bad = [command, ...expanded].find((a) => /["%!\r\n]/.test(a));
+    if (bad !== undefined) {
+      throw new Error(
+        `"${command}" runs through cmd.exe on Windows, which cannot safely pass the argument ${JSON.stringify(bad)}. ` +
+          'Remove the " % ! or line-break characters, or point "gitCompass.ai.cli.command" at the .exe file.'
+      );
+    }
+  }
   return { command, args: expanded, shell, stdin, readsOutputFile: args.some((a) => a.includes('{outputFile}')) };
 }
 

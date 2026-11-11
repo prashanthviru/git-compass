@@ -152,6 +152,7 @@ describe('secrets and settings', () => {
     assert.equal(p.secretKeyFor('openaiCompatible', 'https://api.openai.com/v1'), 'gitCompass.ai.key.openaiCompatible:api.openai.com');
     assert.equal(p.secretKeyFor('openaiCompatible', 'https://openrouter.ai/api/v1'), 'gitCompass.ai.key.openaiCompatible:openrouter.ai');
     assert.equal(p.secretKeyFor('anthropic', 'https://api.anthropic.com'), 'gitCompass.ai.key.anthropic');
+    assert.equal(p.secretKeyFor('anthropic', 'https://proxy.example.com'), 'gitCompass.ai.key.anthropic:proxy.example.com');
     assert.equal(p.secretKeyFor('cli'), undefined);
   });
 
@@ -285,6 +286,13 @@ describe('command-line provider', () => {
     assert.deepEqual(plan.args, ['-p', 'Follow the instructions provided on standard input.']);
     assert.equal(plan.stdin, 'diff with "quotes" & pipes |');
     assert.equal(p.planCli({ command: 'C:\\tools\\agent.exe', args: [], promptInput: 'stdin' }, 'x', { platform: 'win32' }).shell, false);
+  });
+
+  test('on Windows, arguments cmd.exe cannot quote safely are refused', () => {
+    for (const bad of ['a"b', '100%', 'wow!', 'two\nlines']) {
+      assert.throws(() => p.planCli({ command: 'agent', args: [bad], promptInput: 'stdin' }, 'x', { platform: 'win32' }), /cmd\.exe/);
+    }
+    assert.doesNotThrow(() => p.planCli({ command: 'agent', args: ['a"b'], promptInput: 'stdin' }, 'x', { platform: 'linux' }));
   });
 
   test('very long prompts fall back to stdin in argument mode', () => {

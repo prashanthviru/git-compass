@@ -4,6 +4,38 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-11
+
+### Security
+- AI settings that decide where code is sent or what runs (`ai.provider`, `ai.cli.*`, the API base URLs and `ai.apiKeyEnvVar`) can no longer be set by a repository's workspace settings. Set them in user or remote settings.
+- A saved Anthropic API key is only sent to the server it was saved for.
+- Branch, tag and pull request names taken from a repository or remote can no longer be read as git options.
+- Start Review recognises pull requests from forks and fetches them safely.
+- On Windows, command-line AI tools refuse arguments that `cmd.exe` cannot pass safely.
+- Remote images in AI answers are shown as links, so opening an answer cannot send data to another server.
+
+### Fixed
+- Git Compass no longer fails to start when Git is not installed or the Git extension is turned off; it explains what to do instead.
+- Uses the Git that VS Code found (including `git.path`), not only the one on `PATH`.
+- File names with accents, CJK characters or emoji open correctly.
+- Expanding a commit works with Git 2.30.
+- Force Delete Branch is offered in every language.
+- Fetch and push fall back to VS Code's sign-in when credentials are needed, for example in Remote SSH and WSL.
+- AI conflict resolutions keep the file's Windows line endings, and Windows command-line AI output is parsed correctly.
+- Change markers and the commit view work when a custom diff tool or forced colour is configured.
+
+### Performance
+- Blame and file history are only recomputed when a commit changes, not on every save.
+- CodeLens no longer re-blames the whole file while you type.
+- Switching editors no longer loads a file's full history or runs `git status`.
+- Ahead/behind counts in the status bar are cached.
+- Background git commands no longer take the index lock, so they cannot block your own commits.
+- Launchpad skips polling while the window is in the background.
+
+## [0.2.0] - 2026-11-11
+
+First Marketplace release.
+
 ### Added
 - **Create Pull Request** form inside VS Code: base branch, title, description (from the repository's pull request template or your commits), reviewers, labels, draft, and optional AI drafting. Offers to push the branch first, with an explicit refspec.
 - **Merge pull requests** from Launchpad with squash, merge commit, rebase or auto-merge when checks pass, optional branch deletion, and warnings for failing checks, missing approval, conflicts or drafts.
@@ -28,5 +60,7 @@ First public preview.
 - An enable setting for every view and feature.
 - Disabled in untrusted workspaces. Runs on the workspace side in remote setups.
 
-[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/prashanthviru/git-compass/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/prashanthviru/git-compass/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/prashanthviru/git-compass/releases/tag/v0.1.0
