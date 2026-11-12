@@ -2,24 +2,27 @@
 
 Find your way around any Git repository from inside VS Code. You get blame, file and line history, a visual history chart, worktrees, branch compare, an interactive rebase editor, a pull request Launchpad and optional AI helpers. Everything is free and works on public and private repositories, with no account or sign-up.
 
-> **Preview.** Git Compass is at 0.2.3 and still being tested. Please [report anything that breaks](https://github.com/prashanthviru/git-compass/issues).
+Found a bug or have an idea? [Open an issue](https://github.com/prashanthviru/git-compass/issues).
 
 ## Install
 
-You need VS Code 1.90 or newer.
+You need VS Code 1.90 or newer, or an editor based on it.
 
-- **From VS Code:** press `Ctrl+Shift+X` (`Cmd+Shift+X` on macOS), search for **Git Compass**, and choose **Install**.
-- **From the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Prashanthviru.git-compass)**, or from a terminal:
+- **VS Code:** press `Ctrl+Shift+X` (`Cmd+Shift+X` on macOS), search for **Git Compass**, and choose **Install**. It is on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Prashanthviru.git-compass).
+- **Cursor, VSCodium, Windsurf and other VS Code-based editors:** search for **Git Compass** in their Extensions view. It is on [Open VSX](https://open-vsx.org/extension/Prashanthviru/git-compass).
+- **From a terminal:**
 
   ```bash
   code --install-extension Prashanthviru.git-compass
   ```
 
+  Use `cursor` or `codium` instead of `code` for those editors.
+
 Two icons appear in the activity bar: **Git Compass** and **Git Compass Inspect**.
 
 ### Install from a `.vsix` file
 
-Use this for VSCodium or to try a build from `main`. Download the **git-compass-vsix** artifact from the latest successful [CI workflow run](https://github.com/prashanthviru/git-compass/actions/workflows/ci.yml) (you must be signed in to GitHub), or build it yourself with Git and Node.js 20 or newer:
+Use this to try a build from `main` before it is released. Download the **git-compass-vsix** artifact from the latest successful [CI workflow run](https://github.com/prashanthviru/git-compass/actions/workflows/ci.yml) (you must be signed in to GitHub), or build it yourself with Git and Node.js 20 or newer:
 
 ```bash
 git clone https://github.com/prashanthviru/git-compass.git

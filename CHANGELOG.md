@@ -4,6 +4,9 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+- Git Compass is out of preview. This is the first stable release, available on the VS Code Marketplace and on Open VSX for Cursor, VSCodium and Windsurf.
+
 ## [0.2.3] - 2026-11-11
 
 ### Changed
