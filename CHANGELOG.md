@@ -4,6 +4,8 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-12
+
 ### Added
 - **Git identities.** Switch who you commit as from the status bar or **Git Compass: Switch Git Identity…**:
   - Every GitHub account already signed in to the GitHub CLI is listed, ready to use: pick one, choose which email to commit with, and Git Compass saves it as an identity.
@@ -113,7 +115,8 @@ First public preview.
 - An enable setting for every view and feature.
 - Disabled in untrusted workspaces. Runs on the workspace side in remote setups.
 
-[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/prashanthviru/git-compass/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/prashanthviru/git-compass/compare/v0.2.3...v1.0.0
 [0.2.3]: https://github.com/prashanthviru/git-compass/compare/v0.2.1...v0.2.3
 [0.2.1]: https://github.com/prashanthviru/git-compass/compare/v0.2.0...v0.2.1
