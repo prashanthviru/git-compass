@@ -60,3 +60,31 @@ test('every setting read by the code is declared', () => {
 test('no error was shown during activation', () => {
   assert.deepEqual(state.messages.filter(([kind]) => kind === 'error'), []);
 });
+
+test('branch status explains the situation in plain words', () => {
+  const { describeStatus } = require('../extension');
+  const base = { branch: 'main', base: 'main', isBase: true, isProtected: true, ahead: 0, behind: 0, unpushed: 0, incoming: 0, changed: 0, worktree: 'app', worktreeCount: 1, short: 'abc1234' };
+  const say = (over) => describeStatus({ ...base, ...over });
+
+  const editing = say({ changed: 6 });
+  assert.equal(editing.text, '$(warning) Editing main directly · 6 changes');
+  assert.equal(editing.tone, 'warning');
+  assert.equal(editing.actions[0].title, 'Move my changes to a new branch');
+
+  assert.equal(say({ unpushed: 2 }).text, '$(warning) 2 commits on main not pushed');
+  assert.equal(say({ incoming: 1 }).text, '$(arrow-down) main · 1 new commit on origin');
+  assert.equal(say({ incoming: 1 }).tone, undefined);
+  assert.equal(say({}).text, '$(check) main is up to date');
+
+  const feature = { branch: 'feature/x', isBase: false, isProtected: false };
+  assert.equal(say({ ...feature, ahead: 3 }).text, '$(git-branch) feature/x · 3 commits ahead of main');
+  assert.equal(say({ ...feature, ahead: 1 }).text, '$(git-branch) feature/x · 1 commit ahead of main');
+  assert.equal(say({ ...feature, behind: 2 }).text, '$(git-branch) feature/x · 2 behind main');
+  assert.equal(say({ ...feature, ahead: 3, behind: 2 }).text, '$(git-branch) feature/x · 3 ahead, 2 behind main');
+  assert.deepEqual(say({ ...feature, ahead: 3, behind: 2 }).actions.map((a) => a.command), ['gitCompass.branch.updateFromBase', 'gitCompass.pr.create', 'gitCompass.compareBranch']);
+  assert.equal(say({ ...feature }).text, '$(git-branch) feature/x · same as main');
+
+  assert.equal(say({ branch: undefined, detached: true }).text, '$(debug-disconnect) Not on a branch (abc1234)');
+  assert.equal(say({ ...feature, ahead: 3, worktreeCount: 2 }).text, '$(folder) app · feature/x · 3 commits ahead of main');
+  assert.equal(say({ ...feature, base: undefined }).text, '$(git-branch) feature/x');
+});

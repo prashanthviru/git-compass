@@ -84,7 +84,15 @@ Screenshots and short clips are coming soon.
 - **Revision navigation**: step a file back and forward through its history.
 - **Visual File History**: an interactive timeline of a file's commits by author and size.
 - **Interactive rebase editor**: reorder commits by dragging, pick an action for each, then start or abort.
-- **Branch status bar**: worktree, branch, ahead/behind your base branches, and uncommitted count. Turns amber on protected branches.
+- **Branch status bar**: says where you are in plain words ("feature/x · 3 commits ahead of main", "Editing main directly · 6 changes") and turns amber only when something needs attention. Hover or click it for the next step: move changes to a branch, update from main, pull, or create a pull request.
+
+### Git identities
+Keep personal and work commits apart, and push with the right GitHub account.
+- **Status bar**: shows who you commit as in this repository. It turns amber when the repository's rule expects someone else. Click it to switch.
+- **Signed-in accounts**: every GitHub account you are already signed in to with the GitHub CLI is listed, so you can switch to it without typing anything.
+- **Identities**: each has a name and email, and optionally a GitHub CLI account (switched with `gh auth switch`, so pushes and pull requests use it) and an SSH key (set for that repository only).
+- **Rules**: tie an identity to remotes such as `github.com/my-company/`. Git Compass offers to switch when a matching repository commits as someone else.
+- **Sign in to another GitHub account** from the same menu. Sign-in itself happens in `gh`; Git Compass never stores passwords or tokens.
 
 ### AI helpers (optional, off by default)
 Write commit messages, stash messages, changelogs and pull request descriptions. Explain or review a commit, your changes, a branch or a pull request. Search history in plain language, and start work from an issue or start a review from a pull request.
@@ -114,6 +122,7 @@ Open the Command Palette and type **Git Compass**:
 
 | Area | Commands |
 |---|---|
+| Identity | Switch Git Identity…, Add Git Identity…
 | History | Show File History, Show Line History, Open Visual File History, Open Previous / Next Revision |
 | Compare and search | Compare Branch with…, Compare File with Branch…, Search Commits… |
 | Worktrees | Show Worktrees, Create Worktree… |

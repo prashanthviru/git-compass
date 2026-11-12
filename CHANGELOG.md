@@ -4,6 +4,25 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+- **Git identities.** Switch who you commit as from the status bar or **Git Compass: Switch Git Identity…**:
+  - Every GitHub account already signed in to the GitHub CLI is listed, ready to use: pick one, choose which email to commit with, and Git Compass saves it as an identity.
+  - Each identity has a name and email, and optionally a GitHub CLI account and an SSH key.
+  - Switching sets `user.name` and `user.email` for this repository (or globally). It also sets the repository's SSH key and switches `gh` to that GitHub account, so pushes and pull requests use the right one.
+  - Rules such as `github.com/my-company/` warn when a repository commits as the wrong person and offer to fix it.
+  - **Sign in to another GitHub account** starts `gh auth login` in a terminal. No passwords or tokens are stored.
+  - The GitHub CLI has one active account per host, so switching the GitHub account applies to every repository that pushes over HTTPS. SSH keys are set per repository.
+
+### Changed
+- The branch status bar item now explains itself in plain words, such as "feature/x · 3 commits ahead of main", "Editing main directly · 6 changes" or "main is up to date".
+  - It turns amber only when something needs attention: uncommitted or unpushed work on a protected branch, or not being on a branch.
+  - Its hover explains why and offers the next step: move changes to a new branch, update from main, create a pull request, or pull.
+  - Clicking it puts those suggestions first.
+  - The worktree name only appears when you have more than one worktree.
+
+### Security
+- Identities are read only from your user settings (`gitCompass.identities`); a repository's `.vscode/settings.json` cannot add or change them.
+
 ## [1.0.0] - 2026-11-12
 
 ### Changed

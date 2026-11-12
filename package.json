@@ -216,6 +216,18 @@
         "icon": "$(search)"
       },
       {
+        "command": "gitCompass.identity.switch",
+        "title": "Switch Git Identity…",
+        "category": "Git Compass",
+        "icon": "$(account)"
+      },
+      {
+        "command": "gitCompass.identity.add",
+        "title": "Add Git Identity…",
+        "category": "Git Compass",
+        "icon": "$(person-add)"
+      },
+      {
         "command": "gitCompass.menu",
         "title": "Menu",
         "category": "Git Compass"
@@ -1533,6 +1545,35 @@
         }
       },
       {
+        "title": "Identities",
+        "order": 9,
+        "properties": {
+          "gitCompass.identities": {
+            "type": "array",
+            "scope": "application",
+            "default": [],
+            "markdownDescription": "Your git identities. Switch between them with **Git Compass: Switch Git Identity…** or the status bar. Only names, emails, a GitHub login and an SSH key path are stored, never passwords or tokens.",
+            "items": {
+              "type": "object",
+              "required": ["name", "email"],
+              "properties": {
+                "label": { "type": "string", "description": "Short name shown in the status bar, e.g. Personal or Work." },
+                "name": { "type": "string", "description": "git user.name" },
+                "email": { "type": "string", "description": "git user.email" },
+                "githubAccount": { "type": "string", "description": "GitHub CLI account to switch to (gh auth switch), so pushes and pull requests use it." },
+                "sshKey": { "type": "string", "description": "Private SSH key to use in repositories switched to this identity (sets core.sshCommand for that repository)." },
+                "match": { "type": "array", "items": { "type": "string" }, "description": "Remote prefixes this identity is meant for, e.g. github.com/my-company/. Git Compass warns when a matching repository commits as someone else." }
+              }
+            }
+          },
+          "gitCompass.identity.statusBar.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show who you commit as in the status bar."
+          }
+        }
+      },
+      {
         "title": "Blame & Editor",
         "order": 2,
         "properties": {
@@ -1585,7 +1626,7 @@
           "gitCompass.statusBar.branch.enabled": {
             "type": "boolean",
             "default": true,
-            "description": "Show the worktree, branch, ahead/behind and uncommitted count in the status bar."
+            "description": "Show where you are in plain words in the status bar (for example \"feature/x · 3 commits ahead of main\" or \"Editing main directly\"), with the next step to take."
           },
           "gitCompass.baseBranches": {
             "type": "array",
