@@ -2,7 +2,7 @@
   "name": "git-compass",
   "displayName": "Git Compass",
   "description": "Blame, file and line history, visual history, worktrees, branch compare, a pull request Launchpad and AI commit tools, all free on any repository.",
-  "version": "0.2.3",
+  "version": "1.0.0",
   "publisher": "Prashanthviru",
   "author": {
     "name": "Prashanth",

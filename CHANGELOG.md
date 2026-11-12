@@ -4,6 +4,8 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-12
+
 ### Changed
 - Git Compass is out of preview. This is the first stable release, available on the VS Code Marketplace and on Open VSX for Cursor, VSCodium and Windsurf.
 
@@ -92,7 +94,8 @@ First public preview.
 - An enable setting for every view and feature.
 - Disabled in untrusted workspaces. Runs on the workspace side in remote setups.
 
-[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/prashanthviru/git-compass/compare/v0.2.3...v1.0.0
 [0.2.3]: https://github.com/prashanthviru/git-compass/compare/v0.2.1...v0.2.3
 [0.2.1]: https://github.com/prashanthviru/git-compass/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/prashanthviru/git-compass/compare/v0.1.0...v0.2.0
