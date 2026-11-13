@@ -82,7 +82,8 @@ test('commits view marks unpushed commits and pages with load more', async () =>
   assert.equal(nodes.length, 51);
   const more = nodes.at(-1);
   assert.equal(more.type, 'loadMore');
-  assert.equal(item('commits', nodes[0]).contextValue, 'commit');
+  assert.equal(item('commits', nodes[0]).contextValue, 'commit:head');
+  assert.equal(item('commits', nodes[1]).contextValue, 'commit');
   await run('loadMore', more);
   const all = await children('commits');
   assert.equal(all.length, 56);

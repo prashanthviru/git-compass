@@ -132,6 +132,13 @@
           "when": "config.gitCompass.views.worktrees.enabled"
         },
         {
+          "id": "gitCompass.views.recovery",
+          "visibility": "collapsed",
+          "name": "Recovery",
+          "contextualTitle": "Git Compass",
+          "when": "config.gitCompass.views.recovery.enabled"
+        },
+        {
           "id": "gitCompass.views.launchpad",
           "name": "Launchpad",
           "contextualTitle": "Git Compass",
@@ -173,6 +180,10 @@
       {
         "view": "gitCompass.views.search",
         "contents": "Search commits by message, author, file or code change.\n[Search Commits…](command:gitCompass.search)"
+      },
+      {
+        "view": "gitCompass.views.recovery",
+        "contents": "What happens to your branches shows up here: commits, merges, resets and switches. Go back to any point, or bring back a deleted branch.\n[Undo Last Action…](command:gitCompass.undoLastAction)"
       }
     ],
     "commands": [
@@ -635,6 +646,117 @@
         "title": "Abort Merge or Rebase",
         "category": "Git Compass",
         "icon": "$(discard)"
+      },
+      {
+        "command": "gitCompass.undoLastAction",
+        "title": "Undo Last Action…",
+        "category": "Git Compass",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "gitCompass.commit.undo",
+        "title": "Undo Commit…",
+        "category": "Git Compass",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "gitCompass.commit.amend",
+        "title": "Amend Last Commit…",
+        "category": "Git Compass",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "gitCompass.commit.cherryPick",
+        "title": "Cherry-pick into Current Branch",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.commit.revert",
+        "title": "Revert Commit…",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.commit.resetTo",
+        "title": "Reset Current Branch to Here…",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.commit.createBranch",
+        "title": "Create Branch Here…",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.commit.createTag",
+        "title": "Create Tag Here…",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.commit.squashFrom",
+        "title": "Squash into One Commit from Here…",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.recovery.restore",
+        "title": "Go Back to This Point…",
+        "category": "Git Compass",
+        "icon": "$(history)"
+      },
+      {
+        "command": "gitCompass.recovery.createBranch",
+        "title": "Create Branch Here…",
+        "category": "Git Compass",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "gitCompass.recovery.restoreBranch",
+        "title": "Restore Branch",
+        "category": "Git Compass",
+        "icon": "$(history)"
+      },
+      {
+        "command": "gitCompass.recovery.forget",
+        "title": "Forget Deleted Branch",
+        "category": "Git Compass",
+        "icon": "$(close)"
+      },
+      {
+        "command": "gitCompass.recovery.showCommit",
+        "title": "Show Commit",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.recovery.copySha",
+        "title": "Copy SHA",
+        "category": "Git Compass"
+      },
+      {
+        "command": "gitCompass.branch.cleanup",
+        "title": "Clean Up Branches…",
+        "category": "Git Compass",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "gitCompass.showGraph",
+        "title": "Show Commit Graph",
+        "category": "Git Compass",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "gitCompass.showOwnership",
+        "title": "Show Code Owners and Contributors",
+        "category": "Git Compass",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "gitCompass.prePush.check",
+        "title": "Check Branch Before Push",
+        "category": "Git Compass",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "gitCompass.blame.toggleIgnoreWhitespace",
+        "title": "Toggle Blame Ignoring Whitespace",
+        "category": "Git Compass"
       }
     ],
     "menus": {
@@ -922,6 +1044,58 @@
         {
           "command": "gitCompass.conflicts.abort",
           "when": "gitCompass.hasConflicts"
+        },
+        {
+          "command": "gitCompass.commit.undo",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.commit.cherryPick",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.commit.revert",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.commit.resetTo",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.commit.createBranch",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.commit.createTag",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.commit.squashFrom",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.recovery.restore",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.recovery.createBranch",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.recovery.restoreBranch",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.recovery.forget",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.recovery.showCommit",
+          "when": "false"
+        },
+        {
+          "command": "gitCompass.recovery.copySha",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -1004,6 +1178,41 @@
           "command": "gitCompass.conflicts.refresh",
           "when": "view == gitCompass.views.conflicts",
           "group": "navigation@9"
+        },
+        {
+          "command": "gitCompass.undoLastAction",
+          "when": "view == gitCompass.views.commits",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitCompass.showGraph",
+          "when": "view == gitCompass.views.commits",
+          "group": "navigation@3"
+        },
+        {
+          "command": "gitCompass.commit.amend",
+          "when": "view == gitCompass.views.commits",
+          "group": "1_commit@1"
+        },
+        {
+          "command": "gitCompass.prePush.check",
+          "when": "view == gitCompass.views.commits",
+          "group": "1_commit@2"
+        },
+        {
+          "command": "gitCompass.branch.cleanup",
+          "when": "view == gitCompass.views.branches",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitCompass.showGraph",
+          "when": "view == gitCompass.views.branches",
+          "group": "navigation@3"
+        },
+        {
+          "command": "gitCompass.undoLastAction",
+          "when": "view == gitCompass.views.recovery",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -1341,6 +1550,86 @@
           "command": "gitCompass.pr.resolveConflicts",
           "when": "viewItem =~ /^pr:.*conflicting/",
           "group": "2_merge@2"
+        },
+        {
+          "command": "gitCompass.commit.undo",
+          "when": "view == gitCompass.views.commits && viewItem == commit:head",
+          "group": "4_history@1"
+        },
+        {
+          "command": "gitCompass.commit.amend",
+          "when": "view == gitCompass.views.commits && viewItem == commit:head",
+          "group": "4_history@2"
+        },
+        {
+          "command": "gitCompass.commit.cherryPick",
+          "when": "viewItem =~ /^commit(\\+file|:head)?$/ && view != gitCompass.views.commits",
+          "group": "4_history@3"
+        },
+        {
+          "command": "gitCompass.commit.revert",
+          "when": "viewItem =~ /^commit(\\+file|:head)?$/",
+          "group": "4_history@4"
+        },
+        {
+          "command": "gitCompass.commit.resetTo",
+          "when": "view == gitCompass.views.commits && viewItem == commit",
+          "group": "4_history@5"
+        },
+        {
+          "command": "gitCompass.commit.squashFrom",
+          "when": "view == gitCompass.views.commits && viewItem == commit",
+          "group": "4_history@6"
+        },
+        {
+          "command": "gitCompass.commit.createBranch",
+          "when": "viewItem =~ /^commit(\\+file|:head)?$/",
+          "group": "5_create@1"
+        },
+        {
+          "command": "gitCompass.commit.createTag",
+          "when": "viewItem =~ /^commit(\\+file|:head)?$/",
+          "group": "5_create@2"
+        },
+        {
+          "command": "gitCompass.recovery.restore",
+          "when": "viewItem == reflog",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitCompass.recovery.restore",
+          "when": "viewItem == reflog",
+          "group": "1_restore@1"
+        },
+        {
+          "command": "gitCompass.recovery.createBranch",
+          "when": "viewItem =~ /^reflog/",
+          "group": "1_restore@2"
+        },
+        {
+          "command": "gitCompass.recovery.showCommit",
+          "when": "viewItem =~ /^reflog/",
+          "group": "2_open@1"
+        },
+        {
+          "command": "gitCompass.recovery.copySha",
+          "when": "viewItem =~ /^(reflog|reflog:current|deletedBranch)$/",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "gitCompass.recovery.restoreBranch",
+          "when": "viewItem == deletedBranch",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitCompass.recovery.restoreBranch",
+          "when": "viewItem == deletedBranch",
+          "group": "1_restore@1"
+        },
+        {
+          "command": "gitCompass.recovery.forget",
+          "when": "viewItem == deletedBranch",
+          "group": "1_restore@2"
         }
       ],
       "editor/context": [
@@ -1378,6 +1667,11 @@
           "command": "gitCompass.visualHistory",
           "when": "resourceScheme == file && config.gitCompass.visualHistory.enabled",
           "group": "gitCompass@7"
+        },
+        {
+          "command": "gitCompass.showOwnership",
+          "when": "resourceScheme == file",
+          "group": "gitCompass@8"
         }
       ],
       "explorer/context": [
@@ -1395,6 +1689,10 @@
           "command": "gitCompass.visualHistory",
           "when": "!explorerResourceIsFolder && config.gitCompass.visualHistory.enabled",
           "group": "gitCompass@3"
+        },
+        {
+          "command": "gitCompass.showOwnership",
+          "group": "gitCompass@4"
         }
       ],
       "editor/title": [
@@ -1517,6 +1815,11 @@
             "default": true,
             "description": "Show the Worktrees view."
           },
+          "gitCompass.views.recovery.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the Recovery view: what happened to your branches in plain words, with a way back to any point and to deleted branches."
+          },
           "gitCompass.views.launchpad.enabled": {
             "type": "boolean",
             "default": true,
@@ -1555,14 +1858,38 @@
             "markdownDescription": "Your git identities. Switch between them with **Git Compass: Switch Git Identity…** or the status bar. Only names, emails, a GitHub login and an SSH key path are stored, never passwords or tokens.",
             "items": {
               "type": "object",
-              "required": ["name", "email"],
+              "required": [
+                "name",
+                "email"
+              ],
               "properties": {
-                "label": { "type": "string", "description": "Short name shown in the status bar, e.g. Personal or Work." },
-                "name": { "type": "string", "description": "git user.name" },
-                "email": { "type": "string", "description": "git user.email" },
-                "githubAccount": { "type": "string", "description": "GitHub CLI account to switch to (gh auth switch), so pushes and pull requests use it." },
-                "sshKey": { "type": "string", "description": "Private SSH key to use in repositories switched to this identity (sets core.sshCommand for that repository)." },
-                "match": { "type": "array", "items": { "type": "string" }, "description": "Remote prefixes this identity is meant for, e.g. github.com/my-company/. Git Compass warns when a matching repository commits as someone else." }
+                "label": {
+                  "type": "string",
+                  "description": "Short name shown in the status bar, e.g. Personal or Work."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "git user.name"
+                },
+                "email": {
+                  "type": "string",
+                  "description": "git user.email"
+                },
+                "githubAccount": {
+                  "type": "string",
+                  "description": "GitHub CLI account to switch to (gh auth switch), so pushes and pull requests use it."
+                },
+                "sshKey": {
+                  "type": "string",
+                  "description": "Private SSH key to use in repositories switched to this identity (sets core.sshCommand for that repository)."
+                },
+                "match": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Remote prefixes this identity is meant for, e.g. github.com/my-company/. Git Compass warns when a matching repository commits as someone else."
+                }
               }
             }
           },
@@ -1616,6 +1943,16 @@
             "type": "boolean",
             "default": true,
             "description": "Open git-rebase-todo files in the interactive rebase editor. When off they open as plain text."
+          },
+          "gitCompass.blame.ignoreWhitespace": {
+            "type": "boolean",
+            "default": false,
+            "description": "Blame skips changes that only touched whitespace, so lines are credited to the commit that really changed them."
+          },
+          "gitCompass.blame.ignoreRevsFile": {
+            "type": "string",
+            "default": ".git-blame-ignore-revs",
+            "description": "File in the repository listing commits that blame should skip, such as bulk reformatting. Ignored when the file does not exist. Empty turns this off."
           }
         }
       },
@@ -1651,6 +1988,12 @@
               "live"
             ],
             "description": "The branch status bar turns amber while one of these is checked out."
+          },
+          "gitCompass.branchCleanup.staleDays": {
+            "type": "number",
+            "default": 90,
+            "minimum": 0,
+            "description": "Clean Up Branches suggests local branches with no commits for this many days. 0 turns stale suggestions off."
           }
         }
       },
@@ -1662,6 +2005,21 @@
             "type": "boolean",
             "default": true,
             "description": "Show pull requests that need you (to review, blocked, ready) in the status bar."
+          },
+          "gitCompass.launchpad.provider": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "github",
+              "gitlab"
+            ],
+            "enumDescriptions": [
+              "GitLab when origin is on a host with \"gitlab\" in its name, otherwise GitHub",
+              "GitHub, using the GitHub CLI (gh)",
+              "GitLab, using the GitLab CLI (glab)"
+            ],
+            "default": "auto",
+            "description": "Where Launchpad, Create Pull Request and Merge get pull requests (GitHub) or merge requests (GitLab) from."
           }
         }
       },
@@ -1678,6 +2036,44 @@
             "type": "boolean",
             "default": false,
             "description": "Offer \"delete the branch after merging\" as the first choice when merging a pull request."
+          }
+        }
+      },
+      {
+        "title": "Pre-push Checks",
+        "order": 7,
+        "properties": {
+          "gitCompass.prePush.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Before Git Compass pushes a branch, check its commits for possible secrets, conflict markers, debug code, large files, commits made as the wrong identity and fixup commits, and ask before pushing if anything turns up."
+          },
+          "gitCompass.prePush.debugPatterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "console\\.log\\(",
+              "^\\s*debugger;?\\s*$",
+              "\\b(?:describe|it|test)\\.only\\(",
+              "(?<![.\\w])(?:fdescribe|fit)\\(",
+              "\\bbinding\\.pry\\b",
+              "\\bvar_dump\\(",
+              "\\bpdb\\.set_trace\\(\\)|^\\s*breakpoint\\(\\)"
+            ],
+            "description": "Regular expressions for debug code in added lines. Documentation and lock files are skipped."
+          },
+          "gitCompass.prePush.ticketPattern": {
+            "type": "string",
+            "default": "",
+            "description": "Regular expression every commit message must match, such as \"[A-Z]+-\\d+\" for Jira keys. Empty turns this check off."
+          },
+          "gitCompass.prePush.maxFileSizeKB": {
+            "type": "number",
+            "default": 5120,
+            "minimum": 0,
+            "description": "Warn about added or changed files larger than this many KB. 0 turns this check off."
           }
         }
       },

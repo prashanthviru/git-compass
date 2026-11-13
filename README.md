@@ -60,13 +60,32 @@ Screenshots and short clips are coming soon.
 | **Stashes** | Your stashes and their files. Apply, pop or drop. |
 | **Tags** | Tags and their commits. Compare a tag with your branch, or delete it. |
 | **Worktrees** | Every worktree, with ahead/behind and uncommitted counts. Create, open in a new window or this one, reveal or remove. |
+| **Recovery** | What happened to your branches in plain words ("Committed "fix login"", "Switched from main to feature/x", "Reset to HEAD~1"). Go back to any point (a backup branch is saved first), start a branch there, or restore a deleted branch. |
 | **Launchpad** | Your open pull requests grouped as Needs Your Review, Blocked, Ready to Merge, Waiting for Review, Assigned to You and Drafts. Create a pull request, merge any pull request (squash, merge commit, rebase or auto-merge when checks pass, with warnings for failing checks, missing approval, conflicts or drafts), resolve a pull request's conflicts locally, pin, snooze, check out, or open in a new worktree. Needs the GitHub CLI. |
+
+### Undo, recovery and commit actions
+- **Undo Last Action** undoes the last thing that happened to your branch: a commit (its changes stay staged), an amend, a merge, a pull, a rebase, a reset, a cherry-pick, a revert or a squash. It says exactly what will change first, and stops instead of overwriting uncommitted work. If the commit is already pushed, it offers **Revert Instead**. Undoing can itself be undone from the Recovery view.
+- **Commit actions** (right-click a commit in any view):
+  - Cherry-pick into the current branch.
+  - Revert.
+  - Create a branch or a tag at that commit.
+  - On the Commits view: Undo Commit, Amend Last Commit, **Reset Current Branch to Here** (soft, mixed, or hard with a backup branch first) and **Squash into One Commit from Here**.
+- **Clean Up Branches** (Branches view title bar) finds local branches that are merged, whose remote branch was deleted, or that have had no commits for 90 days, and deletes the ones you pick. Protected, base, current and worktree branches are never offered, and everything deleted can be restored from Recovery.
+
+### Commit Graph
+**Git Compass: Show Commit Graph** draws every branch, remote branch and tag as one history, with lanes for branches and merges.
+- Show all of it, local branches, the current branch or a single branch.
+- Find commits by message, author, SHA or ref.
+- Click a commit to open it. Create a branch or tag, cherry-pick, revert or copy the SHA from its row.
 
 ### Pull requests, merging and conflicts
 - **Create Pull Request** opens a form in VS Code: pick the base branch, edit the title and description (prefilled from your repository's pull request template or your commits), add reviewers and labels, choose draft, or let AI write it. If the branch isn't on origin yet, Git Compass offers to push it first.
 - **Merge** a pull request from Launchpad, or merge or rebase branches locally from the Branches view.
 - **Resolve conflicts** in the Conflicts view, including conflicts on a pull request: Git Compass checks the branch out, merges the base in, and lets you push the result when you're done.
-- Anything that changes GitHub or your remote asks you to confirm first. Git Compass pushes only with an explicit branch name, never force-pushes, and refuses to push protected branches.
+- **Pre-push checks**: before Git Compass pushes, it looks at the commits being pushed for possible secrets, leftover conflict markers, debug code (`console.log`, `.only(`, `debugger`), very large files, commits made as the wrong identity and `fixup!`/WIP commits, and asks before pushing if anything turns up. You can also require a ticket reference in commit messages. Run **Check Branch Before Push** at any time.
+- **Code owners**: the form suggests the CODEOWNERS of the files you changed as reviewers.
+- **GitLab**: when origin is on GitLab, Launchpad, Create, Merge, check out and resolve conflicts work with merge requests through the [GitLab CLI](https://gitlab.com/gitlab-org/cli) (`glab auth login`).
+- Anything that changes GitHub, GitLab or your remote asks you to confirm first. Git Compass pushes only with an explicit branch name, never force-pushes, and refuses to push protected branches.
 
 ### Git Compass Inspect side bar
 | View | What it shows |
@@ -81,6 +100,8 @@ Screenshots and short clips are coming soon.
 - **Status bar blame** for the current line.
 - **File annotations**: full-file blame in the gutter, a heatmap of how recent each line is, or highlights for lines changed since the last commit.
 - **CodeLens** above functions and classes, showing who changed them last and how many people have.
+- **Blame that skips noise**: commits listed in `.git-blame-ignore-revs` (bulk reformatting, renames) are skipped, and **Toggle Blame Ignoring Whitespace** skips whitespace-only changes.
+- **Code owners and contributors**: right-click a file or folder to see its CODEOWNERS rule, who wrote the lines there today, and who has committed most, overall and recently.
 - **Revision navigation**: step a file back and forward through its history.
 - **Visual File History**: an interactive timeline of a file's commits by author and size.
 - **Interactive rebase editor**: reorder commits by dragging, pick an action for each, then start or abort.
@@ -112,7 +133,7 @@ The settings that choose where your code is sent (provider, command-line tool an
 
 ## Requirements
 - Git 2.30 or newer. Git Compass uses the same Git as VS Code, including the `git.path` setting.
-- Optional: the [GitHub CLI](https://cli.github.com), signed in with `gh auth login`, for Launchpad, Start Work and Start Review.
+- Optional: the [GitHub CLI](https://cli.github.com), signed in with `gh auth login`, for Launchpad, Start Work and Start Review. For GitLab, the [GitLab CLI](https://gitlab.com/gitlab-org/cli) signed in with `glab auth login`.
 - Optional: an AI provider from the table above.
 
 Git Compass works in VS Code 1.90+ and in VSCodium and other editors that install from Open VSX. In Remote SSH, WSL, Dev Containers and Codespaces it runs on the remote side, next to your repository, so the GitHub CLI, AI command-line tools and local AI servers such as Ollama must be available on that remote machine. It is turned off in untrusted (Restricted Mode) workspaces, because Git can run programs configured by a repository, and it does not support virtual workspaces.
@@ -123,12 +144,13 @@ Open the Command Palette and type **Git Compass**:
 | Area | Commands |
 |---|---|
 | Identity | Switch Git Identity…, Add Git Identity…
-| History | Show File History, Show Line History, Open Visual File History, Open Previous / Next Revision |
+| History | Show File History, Show Line History, Open Visual File History, Open Previous / Next Revision, Show Commit Graph, Show Code Owners and Contributors |
+| Undo and recovery | Undo Last Action…, Amend Last Commit…, Clean Up Branches… |
 | Compare and search | Compare Branch with…, Compare File with Branch…, Search Commits… |
 | Worktrees | Show Worktrees, Create Worktree… |
-| Pull requests and merging | Create Pull Request…, Push Current Branch, Update Current Branch from Base |
+| Pull requests and merging | Create Pull Request…, Push Current Branch, Update Current Branch from Base, Check Branch Before Push |
 | Conflicts | Continue Merge or Rebase, Skip Commit, Abort Merge or Rebase |
-| Annotations | Toggle File Blame, Toggle File Heatmap, Toggle File Changes, Clear File Annotations |
+| Annotations | Toggle File Blame, Toggle File Heatmap, Toggle File Changes, Clear File Annotations, Toggle Blame Ignoring Whitespace |
 | Rebase | Open Rebase Todo as Text |
 | AI | Set Up AI Provider…, Set AI API Key, Clear AI API Key, Test AI Connection, Generate Commit Message, Stash with AI Message…, Generate Changelog…, Generate Pull Request…, Explain Commit, Explain Changes, Review with AI, AI Search Commits…, Start Work on Issue…, Start Review of Pull Request… |
 | General | Menu, Refresh |
@@ -151,7 +173,7 @@ Every part of Git Compass can be turned off.
 
 | Setting | Default | Controls |
 |---|---|---|
-| `gitCompass.views.<view>.enabled` | `true` | Each view: `conflicts`, `commits`, `branches`, `remotes`, `stashes`, `tags`, `worktrees`, `launchpad`, `fileHistory`, `lineHistory`, `compare`, `search` |
+| `gitCompass.views.<view>.enabled` | `true` | Each view: `conflicts`, `commits`, `branches`, `remotes`, `stashes`, `tags`, `worktrees`, `recovery`, `launchpad`, `fileHistory`, `lineHistory`, `compare`, `search` |
 | `gitCompass.currentLine.enabled` | `true` | Current-line blame and its hover |
 | `gitCompass.statusBarBlame.enabled` | `true` | Blame in the status bar |
 | `gitCompass.codeLens.enabled` | `true` | CodeLens above symbols |
@@ -159,12 +181,20 @@ Every part of Git Compass can be turned off.
 | `gitCompass.revisionNavigation.enabled` | `true` | Previous/next revision buttons |
 | `gitCompass.visualHistory.enabled` | `true` | Visual File History |
 | `gitCompass.rebaseEditor.enabled` | `true` | Interactive rebase editor; when off, rebase todos open as text |
+| `gitCompass.blame.ignoreWhitespace` | `false` | Blame skips whitespace-only changes |
+| `gitCompass.blame.ignoreRevsFile` | `.git-blame-ignore-revs` | Commits blame skips, when the file exists. Empty turns this off |
 | `gitCompass.statusBar.branch.enabled` | `true` | Branch status bar |
 | `gitCompass.baseBranches` | `[]` | Branches for ahead/behind and compare, e.g. `["develop", "main"]`. Empty uses the remote's default branch |
 | `gitCompass.protectedBranches` | `main`, `master`, … | Branches that turn the status bar amber |
+| `gitCompass.branchCleanup.staleDays` | `90` | Clean Up Branches suggests branches with no commits for this long. `0` turns this off |
 | `gitCompass.launchpad.statusBar.enabled` | `true` | Launchpad counts in the status bar |
+| `gitCompass.launchpad.provider` | `auto` | `auto`, `github` or `gitlab`. Auto uses GitLab when origin's host has "gitlab" in its name |
 | `gitCompass.pr.defaultDraft` | `false` | Tick "Create as draft" by default in the Create Pull Request form |
 | `gitCompass.pr.deleteBranchAfterMerge` | `false` | Offer deleting the branch first when merging a pull request |
+| `gitCompass.prePush.enabled` | `true` | Check commits before Git Compass pushes them |
+| `gitCompass.prePush.debugPatterns` | `console.log(`, `debugger`, … | Regular expressions for debug code in added lines |
+| `gitCompass.prePush.ticketPattern` | | Regular expression every commit message must match, e.g. `[A-Z]+-\d+`. Empty turns this off |
+| `gitCompass.prePush.maxFileSizeKB` | `5120` | Warn about added or changed files larger than this. `0` turns this off |
 | `gitCompass.ai.provider` | `none` | `none`, `cli`, `openaiCompatible`, `anthropic` or `vscodeLm` |
 | `gitCompass.ai.cli.command` / `.args` / `.promptInput` | | The command-line tool to run and how it receives the prompt |
 | `gitCompass.ai.openaiCompatible.baseUrl` / `.model` | | Endpoint and model for OpenAI-compatible APIs |
@@ -177,7 +207,8 @@ Every part of Git Compass can be turned off.
 ## Privacy
 - Git Compass collects **no telemetry** and has no server of its own.
 - Git commands run locally on your machine, or on the remote side in a remote workspace.
-- Launchpad talks to GitHub only through your own GitHub CLI.
+- Launchpad talks to GitHub or GitLab only through your own GitHub CLI or GitLab CLI.
+- Pre-push checks run locally and never send your code anywhere.
 - AI features are off until you choose a provider. When you run an AI command, the diff, commit messages or pull request text it needs are sent only to that provider. The first time, Git Compass tells you where the data is going.
 
 ## Contributing

@@ -4,6 +4,45 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+- **Undo Last Action.** One command undoes the last thing that happened to your branch: a commit (its changes stay staged), an amend, a merge, a pull, a rebase, a reset, a cherry-pick, a revert or a squash. It explains what will change before doing anything, stops rather than overwrite uncommitted work, and offers **Revert Instead** when the commit is already pushed. It is on the Commits view title bar and in the Command Palette.
+- **Recovery view.** Your branch history (the reflog) in plain words, such as "Committed "fix login"", "Switched from main to feature/x" or "Merged feature (fast-forward)". From any point you can:
+  - **Go Back to This Point**: moves the branch back after saving a backup branch.
+  - **Create Branch Here.**
+  - Check the point out on its own.
+  - **Deleted branches** lists branches you deleted from Git Compass, plus deleted branches whose commits exist nowhere else. Restore any of them with one click.
+- **Commit actions** on commits in every view:
+  - Cherry-pick into the current branch.
+  - Revert.
+  - Create a branch or a tag here (optionally pushing the tag).
+  - On the Commits view only: Undo Commit, Amend Last Commit, **Reset Current Branch to Here** (soft, mixed, or hard with a backup branch first) and **Squash into One Commit from Here**, which keeps your files, keeps the original messages in the description, and can be undone.
+- **Commit Graph.** Every branch, remote branch and tag as one history, with lanes for branches and merges.
+  - Show all of it, local branches, the current branch or one branch.
+  - Find commits by message, author, SHA or ref.
+  - Click a commit to see it. Branch, tag, cherry-pick, revert or copy from the row.
+  - Long histories load 400 commits at a time.
+- **Clean Up Branches.** Finds local branches that are merged into the base branch, whose remote branch was deleted (usually a merged pull request), or that have had no commits for `gitCompass.branchCleanup.staleDays` days. Pick which ones to delete. Protected, base, current and worktree branches are never offered. Deleted branches can be restored from the Recovery view.
+- **Code owners and contributors** for any file or folder, from the editor or Explorer context menu:
+  - The matching CODEOWNERS rule (`.github/`, the repository root, `docs/` or `.gitlab/`).
+  - Who wrote the lines that are there today.
+  - Who has committed most, overall and in the last 90 days.
+  - The Create Pull Request form suggests the code owners of the changed files as reviewers.
+- **Pre-push checks.** Before Git Compass pushes a branch (Push Current Branch, Create Pull Request), it checks only the commits being pushed and asks before pushing if it finds:
+  - Possible secrets: private keys, cloud keys and tokens.
+  - Leftover conflict markers.
+  - Debug code, such as `console.log` or `.only(` in tests.
+  - Files over `gitCompass.prePush.maxFileSizeKB`.
+  - Commits made as someone other than the identity your rules expect.
+  - `fixup!` or WIP commits.
+  - Optionally, commit messages missing a ticket reference (`gitCompass.prePush.ticketPattern`).
+  - **Check Branch Before Push** runs the same checks on demand.
+- **GitLab merge requests** in Launchpad, Create Pull Request, Merge, check out, open in worktree and resolve conflicts, through the GitLab CLI (`glab`). Detected from the origin URL, or set with `gitCompass.launchpad.provider`.
+- **Blame that skips noise.** Blame, CodeLens, the gutter and the heatmap skip the commits listed in `.git-blame-ignore-revs` (`gitCompass.blame.ignoreRevsFile`). They can also skip whitespace-only changes (`gitCompass.blame.ignoreWhitespace`, or **Toggle Blame Ignoring Whitespace**).
+
+### Changed
+- Deleting a branch from the Branches view remembers where it pointed, so you can restore it from the Recovery view.
+- Launchpad only shows a pull request's `+added −removed` size when the provider reports it.
+
 ## [1.1.0] - 2026-11-12
 
 ### Added

@@ -6,6 +6,9 @@ const crypto = require('crypto');
 const g = require('./git');
 const views = require('./views');
 const { gitEdit, readState } = require('./conflicts');
+const forge = require('./forge');
+const prePush = require('./prePush');
+const ownership = require('./ownership');
 
 const TEMPLATE_PATHS = ['.github/pull_request_template.md', '.github/PULL_REQUEST_TEMPLATE.md', 'docs/pull_request_template.md', 'PULL_REQUEST_TEMPLATE.md', 'pull_request_template.md'];
 const BRANCH_STRATEGIES = [
@@ -182,7 +185,9 @@ async function submitPullRequest(root, branch, form) {
   if (!title) throw new Error('Add a title.');
   if (!form.base) throw new Error('Choose a base branch.');
   checkPushAllowed(branch, form.base);
+  const k = await forge.kind(root);
   if (await needsPush(root, branch)) {
+    if (!(await prePush.gate(root, branch))) return undefined;
     const go = await confirm(
       `Push ${branch} to origin and create the pull request?`,
       `Runs: git ${pushArgs(branch).join(' ')}\nThen creates a pull request ${branch} → ${baseName(form.base)}. Git Compass never force-pushes; if origin has commits you don't, the push stops and nothing is created.`,
@@ -192,8 +197,17 @@ async function submitPullRequest(root, branch, form) {
     await pushBranch(root, branch);
   }
   const extras = [form.draft ? 'Draft' : '', splitList(form.reviewers).length ? `Reviewers: ${splitList(form.reviewers).join(', ')}` : '', form.labels ? `Labels: ${form.labels}` : ''].filter(Boolean).join('\n');
-  const ok = await confirm(`Create pull request ${branch} → ${baseName(form.base)}?`, `Title: ${title}${extras ? `\n${extras}` : ''}\n\nThis creates the pull request on GitHub.`, 'Create Pull Request');
+  const what = forge.noun(k);
+  const ok = await confirm(
+    `Create ${what} ${branch} → ${baseName(form.base)}?`,
+    `Title: ${title}${extras ? `\n${extras}` : ''}\n\nThis creates the ${what} on ${k === 'gitlab' ? 'GitLab' : 'GitHub'}.`,
+    k === 'gitlab' ? 'Create Merge Request' : 'Create Pull Request'
+  );
   if (!ok) return undefined;
+  if (k === 'gitlab') {
+    const out = await forge.glab(root, forge.glabCreateArgs({ base: form.base, head: branch, title, body: String(form.body || ''), draft: !!form.draft, reviewers: form.reviewers, labels: form.labels }));
+    return forge.lastUrl(out);
+  }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'git-compass-pr-'));
   const bodyFile = path.join(dir, 'body.md');
   fs.writeFileSync(bodyFile, String(form.body || ''));
@@ -241,6 +255,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 .error { color: var(--vscode-errorForeground); background: var(--vscode-inputValidation-errorBackground); border: 1px solid var(--vscode-inputValidation-errorBorder); padding: 8px 10px; margin-top: 14px; white-space: pre-wrap; display: none; }
 .busy { color: var(--vscode-descriptionForeground); }
 .hidden { display: none; }
+.owners { color: var(--vscode-descriptionForeground); margin-top: 6px; font-size: .92em; }
+button.link { background: none; color: var(--vscode-textLink-foreground); padding: 0 4px; }
+button.link:hover { background: none; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -257,7 +274,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 <label for="body">Description</label>
 <textarea id="body"></textarea>
 <div class="row">
-  <div><label for="reviewers">Reviewers</label><input type="text" id="reviewers" placeholder="octocat, hubot"></div>
+  <div><label for="reviewers">Reviewers</label><input type="text" id="reviewers" placeholder="octocat, hubot"><div class="owners hidden" id="owners">Code owners: <span id="ownerList"></span><button class="link" id="addOwners">Add</button></div></div>
   <div><label for="labels">Labels</label><input type="text" id="labels" placeholder="bug, enhancement"></div>
 </div>
 <label class="check"><input type="checkbox" id="draft"> Create as draft</label>
@@ -282,6 +299,16 @@ function showError(message) {
   $('error').textContent = message || '';
   $('error').style.display = message ? 'block' : 'none';
 }
+function showOwners(list) {
+  owners = Array.isArray(list) ? list : [];
+  $('ownerList').textContent = owners.join(', ');
+  $('owners').classList.toggle('hidden', !owners.length);
+}
+let owners = [];
+$('addOwners').addEventListener('click', () => {
+  const current = $('reviewers').value.split(',').map((s) => s.trim()).filter(Boolean);
+  $('reviewers').value = [...new Set([...current, ...owners])].join(', ');
+});
 $('title').addEventListener('input', () => { edited.title = true; });
 $('body').addEventListener('input', () => { edited.body = true; });
 $('base').addEventListener('change', () => { showError(''); vscode.postMessage({ type: 'base', base: $('base').value }); });
@@ -307,11 +334,14 @@ window.addEventListener('message', (event) => {
     $('summary').textContent = m.summary;
     $('draft').checked = !!m.draft;
     $('ai').classList.toggle('hidden', !m.aiEnabled);
+    showOwners(m.owners);
+    if (m.gitlab) { document.querySelector('h1').textContent = 'Create Merge Request'; $('submit').textContent = 'Create Merge Request'; }
     edited = { title: false, body: false };
     setBusy('');
     showError('');
   } else if (m.type === 'summary') {
     $('summary').textContent = m.summary;
+    showOwners(m.owners);
     if (!edited.title && m.title !== undefined) $('title').value = m.title;
     if (!edited.body && m.body !== undefined) $('body').value = m.body;
   } else if (m.type === 'draft') {
@@ -334,7 +364,12 @@ vscode.postMessage({ type: 'ready' });
 
 async function prefill(root, branch, base, template) {
   const summary = await branchSummary(root, base);
-  return { summary: summaryLine(summary), title: defaultTitle(summary.commits, branch), body: template ?? commitBullets(summary.commits) };
+  let owners = [];
+  if (summary.mergeBase) {
+    const files = (await g.git(root, ['diff', '--name-only', summary.mergeBase, 'HEAD']).catch(() => '')).split('\n').filter(Boolean);
+    owners = ownership.suggestedReviewers(root, files).map((o) => o.replace(/^@/, ''));
+  }
+  return { summary: summaryLine(summary), title: defaultTitle(summary.commits, branch), body: template ?? commitBullets(summary.commits), owners };
 }
 
 function aiEnabled() {
@@ -382,7 +417,7 @@ async function openCreateForm(root) {
     root,
     branch,
     template,
-    init: { type: 'init', repo: path.basename(root), branch, bases, base, ...p, draft: g.config().get('pr.defaultDraft', false), aiEnabled: aiEnabled() },
+    init: { type: 'init', repo: path.basename(root), branch, bases, base, ...p, draft: g.config().get('pr.defaultDraft', false), aiEnabled: aiEnabled(), gitlab: (await forge.kind(root)) === 'gitlab' },
   };
   if (panel) {
     panel.reveal();
@@ -484,8 +519,10 @@ async function mergePullRequest(node) {
     method.auto ? 'Enable Auto-Merge' : 'Merge'
   );
   if (!ok) return undefined;
-  const args = prMergeArgs({ number: pr.number, method: mergeMethod, auto: !!method.auto, deleteBranch: branchChoice.value });
-  await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Merging #${pr.number}…` }, () => ghRunner(root, args));
+  const gitlab = (pr.forge || (await forge.kind(root))) === 'gitlab';
+  const opts = { number: pr.number, method: mergeMethod, auto: !!method.auto, deleteBranch: branchChoice.value };
+  const args = gitlab ? forge.glabMergeArgs(opts) : prMergeArgs(opts);
+  await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Merging ${gitlab ? '!' : '#'}${pr.number}…` }, () => (gitlab ? forge.glab : ghRunner)(root, args));
   vscode.commands.executeCommand('gitCompass.refresh');
   vscode.window.showInformationMessage(method.auto ? `Auto-merge enabled for #${pr.number}.` : `Merged #${pr.number}.`);
   return args;
@@ -500,7 +537,8 @@ async function resolvePrConflicts(node) {
   );
   if (!ok) return undefined;
   await requireClean(root, 'check out the pull request');
-  await ghRunner(root, ['pr', 'checkout', String(pr.number)]);
+  const k = pr.forge || (await forge.kind(root));
+  await (k === 'gitlab' ? forge.glab : ghRunner)(root, forge.checkoutArgs(k, pr.number));
   await g.fetchRef(root, pr.baseRefName, gitEdit);
   let error;
   try {
@@ -528,6 +566,7 @@ async function pushCurrentBranch(root) {
     vscode.window.showInformationMessage(`origin/${branch} is already up to date.`);
     return false;
   }
+  if (!(await prePush.gate(root, branch))) return false;
   if (!(await confirm(`Push ${branch} to origin?`, `Runs: git ${pushArgs(branch).join(' ')}\nGit Compass never force-pushes; if origin has commits you don't, the push stops.`, 'Push'))) return false;
   await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Pushing ${branch}…` }, () => pushBranch(root, branch));
   vscode.commands.executeCommand('gitCompass.refresh');
@@ -580,6 +619,8 @@ function register(context) {
 
 module.exports = {
   register,
+  afterLocalMerge,
+  requireClean,
   setGhRunner,
   checkPushAllowed,
   pushArgs,

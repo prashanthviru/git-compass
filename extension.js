@@ -161,15 +161,21 @@ async function menu() {
   const items = [
     ...(suggested.length ? [{ label: 'Suggested', kind: vscode.QuickPickItemKind.Separator }, ...suggested, { label: 'More', kind: vscode.QuickPickItemKind.Separator }] : []),
     { label: '$(git-commit) Commits', command: `${views.VIEW.commits}.focus` },
+    { label: '$(type-hierarchy) Commit Graph', command: 'gitCompass.showGraph' },
+    { label: '$(discard) Undo Last Action…', command: 'gitCompass.undoLastAction' },
+    { label: '$(history) Recovery', command: 'gitCompass.views.recovery.focus' },
     { label: '$(repo) Worktrees', command: 'gitCompass.worktrees' },
     { label: '$(git-compare) Compare Branch with…', command: 'gitCompass.compareBranch' },
     { label: '$(search) Search Commits…', command: 'gitCompass.search' },
     { label: '$(git-pull-request-create) Create Pull Request…', command: 'gitCompass.pr.create' },
+    { label: '$(checklist) Check Branch Before Push', command: 'gitCompass.prePush.check' },
+    { label: '$(clear-all) Clean Up Branches…', command: 'gitCompass.branch.cleanup' },
     ...(hasFile
       ? [
           { label: '$(history) File History', command: 'gitCompass.fileHistory' },
           { label: '$(list-selection) Line History', command: 'gitCompass.lineHistory' },
           { label: '$(diff) Compare File with Branch…', command: 'gitCompass.compareFile' },
+          { label: '$(organization) Code Owners and Contributors', command: 'gitCompass.showOwnership' },
         ]
       : []),
     { label: '$(account) Switch Git Identity…', command: 'gitCompass.identity.switch' },
@@ -195,7 +201,7 @@ async function activate(context) {
   const api = await g.getGitApi();
   if (!api) return;
   views.register(context);
-  for (const name of ['./editor', './visualHistory', './rebase', './ai', './conflicts', './pullRequests', './identities']) optional(name)?.register(context);
+  for (const name of ['./forge', './editor', './visualHistory', './rebase', './ai', './conflicts', './pullRequests', './identities', './prePush', './recovery', './cleanup', './ownership', './graph']) optional(name)?.register(context);
 
   g.onRepoChange(context, scheduleStatus, 300);
   context.subscriptions.push(

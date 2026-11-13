@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const g = require('./git');
+const forge = require('./forge');
 
 const PAGE = 50;
 const RESULT_CAP = 200;
@@ -192,7 +193,7 @@ class View {
     this.dirty = false;
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
-    this.tree = vscode.window.createTreeView(VIEW[key], { treeDataProvider: this, showCollapseAll: true });
+    this.tree = vscode.window.createTreeView(VIEW[key] || key, { treeDataProvider: this, showCollapseAll: true });
     this.tree.onDidChangeVisibility((e) => {
       if (e.visible && this.dirty) {
         this.dirty = false;
@@ -225,11 +226,12 @@ class View {
   }
 }
 
-function commitNodes(root, commits, { key, view, limit = PAGE, file, currentRel, unpushed } = {}) {
+function commitNodes(root, commits, { key, view, limit = PAGE, file, currentRel, unpushed, head } = {}) {
   const nodes = commits.slice(0, limit).map((commit) => ({
     type: 'commit',
     root,
     commit,
+    head: !!head && commit.hash === head,
     file: file ? commit.change || { status: 'M', oldPath: file, path: file } : undefined,
     currentRel,
     unpushed: !!unpushed?.has(commit.hash),
@@ -270,7 +272,7 @@ function toTreeItem(node) {
       item.description = [node.unpushed ? 'not pushed' : '', c.author, shortAgo(c.iso) || c.date, refs.join(' ')].filter(Boolean).join(' · ');
       item.tooltip = g.commitTooltip(c);
       item.iconPath = commitIcon(c, node.unpushed);
-      item.contextValue = node.file ? 'commit+file' : 'commit';
+      item.contextValue = node.file ? 'commit+file' : node.head ? 'commit:head' : 'commit';
       if (node.file) item.command = { command: 'gitCompass.openChanges', title: 'Open Changes', arguments: [node] };
       return item;
     }
@@ -478,7 +480,7 @@ async function commitsRoot(view) {
   const [commits, unpushed] = await Promise.all([g.logCommits(root, [`-n${limit + 1}`]), unpushedCommits(root, head)]);
   const ahead = unpushed.set?.size;
   view.tree.description = `${g.currentBranch(root)}${unpushed.upstream ? (ahead ? ` · ${ahead} to push` : ' · up to date') : ' · not published'}`;
-  return commitNodes(root, commits, { key: 'commits', view: 'commits', limit, unpushed: unpushed.set });
+  return commitNodes(root, commits, { key: 'commits', view: 'commits', limit, unpushed: unpushed.set, head: head?.name ? commits[0]?.hash : undefined });
 }
 
 function formatTrack(track) {
@@ -588,7 +590,7 @@ function classifyPr(pr, { mine, review }) {
     { failing: '✗ checks failing', pending: '… checks running', passing: '✓ checks' }[checks],
     { APPROVED: 'approved', CHANGES_REQUESTED: 'changes requested', REVIEW_REQUIRED: 'needs review' }[pr.reviewDecision],
     conflicts && 'conflicts',
-    `+${pr.additions} −${pr.deletions}`,
+    Number.isFinite(pr.additions) ? `+${pr.additions} −${pr.deletions}` : '',
   ].filter(Boolean);
   let category = 'assigned';
   const isMine = mine.has(pr.number);
@@ -611,8 +613,7 @@ function saveLaunchpadPrefs(prefs) {
 
 async function loadLaunchpad(root, force = false) {
   if (!force && launchpadCache?.root === root && Date.now() - launchpadCache.at < 60e3) return launchpadCache.promise;
-  const list = (extra) => gh(root, ['pr', 'list', '--state', 'open', '--limit', '100', '--json', PR_FIELDS, ...extra]).then(JSON.parse);
-  const promise = Promise.all([list(['--author', '@me']), list(['--search', 'review-requested:@me']), list(['--search', 'assignee:@me'])]).then(([mine, review, assigned]) => {
+  const promise = forge.listForLaunchpad(root, PR_FIELDS).then(([mine, review, assigned]) => {
     const sets = { mine: new Set(mine.map((p) => p.number)), review: new Set(review.map((p) => p.number)) };
     const prs = new Map();
     for (const pr of [...review, ...mine, ...assigned]) prs.set(pr.number, pr);
@@ -662,8 +663,9 @@ async function launchpadRoot(view) {
   const repo = repoOrMessage(view);
   if (!repo) return [];
   const items = await loadLaunchpad(repo.rootUri.fsPath);
-  if (!items.length) view.tree.message = 'No open pull requests involve you. 🎉';
-  view.tree.description = items.length ? plural(items.filter((i) => !i.info.snoozedUntil).length, 'open PR') : undefined;
+  const gitlab = (await forge.kind(repo.rootUri.fsPath)) === 'gitlab';
+  if (!items.length) view.tree.message = `No open ${gitlab ? 'merge' : 'pull'} requests involve you. 🎉`;
+  view.tree.description = items.length ? plural(items.filter((i) => !i.info.snoozedUntil).length, gitlab ? 'open MR' : 'open PR') : undefined;
   return groupLaunchpad(items);
 }
 
@@ -677,7 +679,7 @@ async function openPrWorktree(node) {
     target = path.join(path.dirname(main), `${path.basename(main)}-pr-${pr.number}`);
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating worktree for #${pr.number}…` }, async () => {
       if (pr.isCrossRepository) {
-        await g.fetchRef(root, `pull/${pr.number}/head`);
+        await g.fetchRef(root, forge.headRef(pr.forge || 'github', pr.number));
         await g.git(root, ['worktree', 'add', '--detach', target, 'FETCH_HEAD']);
         return;
       }
@@ -874,8 +876,27 @@ async function removeWorktree(node) {
   views.worktrees.refresh();
 }
 
+const DELETED_KEY = 'gitCompass.deletedBranches';
+
+// Local branches Git Compass deleted, newest first, so the Recovery view can bring them back.
+function deletedBranches(root) {
+  return (memento?.get(DELETED_KEY, []) || []).filter((d) => !root || d.root === root);
+}
+
+async function rememberDeletedBranch(root, name, sha) {
+  if (!memento || !sha) return;
+  const list = [{ root, name, sha, at: Date.now() }, ...memento.get(DELETED_KEY, []).filter((d) => !(d.root === root && d.name === name))].slice(0, 100);
+  await memento.update(DELETED_KEY, list);
+}
+
+async function forgetDeletedBranch(root, name) {
+  if (!memento) return;
+  await memento.update(DELETED_KEY, memento.get(DELETED_KEY, []).filter((d) => !(d.root === root && d.name === name)));
+}
+
 async function deleteBranch(node) {
   const name = node.branch.name;
+  const sha = (await g.git(node.root, ['rev-parse', '--verify', '-q', `refs/heads/${name}`]).catch(() => '')).trim();
   if (!(await confirm(`Delete branch "${name}"?`, 'Only the local branch is deleted.', 'Delete'))) return;
   try {
     await g.git(node.root, ['branch', '-d', '--end-of-options', name]);
@@ -884,7 +905,10 @@ async function deleteBranch(node) {
     if (!(await confirm(`"${name}" has commits that are not merged anywhere.`, 'Force-deleting loses those commits unless another branch or tag points at them.', 'Force Delete'))) return;
     await g.git(node.root, ['branch', '-D', '--end-of-options', name]);
   }
+  await rememberDeletedBranch(node.root, name, sha);
   views.branches.refresh();
+  views.recovery?.refresh();
+  vscode.window.setStatusBarMessage(`Deleted ${name} (was ${sha.slice(0, 7)}). Restore it from the Recovery view.`, 8000);
 }
 
 function addComparison(root, ref) {
@@ -1043,7 +1067,7 @@ function register(context) {
     'pr.copyUrl': (node) => vscode.env.clipboard.writeText(node.pr.url),
     'pr.checkout': async (node) => {
       if (!(await confirm(`Check out #${node.pr.number}?`, `Switches this window to ${node.pr.headRefName}.`, 'Check Out'))) return;
-      await vscode.window.withProgress({ location: { viewId: VIEW.launchpad } }, () => gh(node.root, ['pr', 'checkout', String(node.pr.number)]));
+      await vscode.window.withProgress({ location: { viewId: VIEW.launchpad } }, () => forge.checkout(node.root, node.pr.number));
       refreshAll();
     },
     'launchpad.openWorktree': openPrWorktree,
@@ -1135,4 +1159,4 @@ function addSearch(root, label, query, args) {
   return focus('search');
 }
 
-module.exports = { register, refreshAll, addSearch, gh, VIEW, shortAgo, commitType, remoteLabel, groupBranches, SEARCH_MODES, formatTrack, relativeDate, checksState, classifyPr, groupLaunchpad };
+module.exports = { register, refreshAll, addSearch, gh, VIEW, views, View, msg, icon, plural, commitNodes, toTreeItem, limitFor, confirm, deletedBranches, rememberDeletedBranch, forgetDeletedBranch, shortAgo, commitType, remoteLabel, groupBranches, SEARCH_MODES, formatTrack, relativeDate, checksState, classifyPr, groupLaunchpad };

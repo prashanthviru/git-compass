@@ -81,3 +81,22 @@ test('current-line blame text follows the format setting', () => {
   assert.equal(formatLine('${message}', { ...c, summary: 'x'.repeat(100) }, 'Ann').length, 72);
   assert.equal(truncate('  short  ', 10), 'short');
 });
+
+test('blame options skip whitespace and the ignore-revs file only when asked and inside the repo', () => {
+  const { blameOptions } = require('../editor');
+  const fsx = require('fs');
+  const os = require('os');
+  const pathx = require('path');
+  const root = fsx.mkdtempSync(pathx.join(os.tmpdir(), 'git-compass-blame-'));
+  try {
+    const cfg = (values) => ({ get: (k, d) => (k in values ? values[k] : d) });
+    assert.deepEqual(blameOptions(root, cfg({})), []);
+    fsx.writeFileSync(pathx.join(root, '.git-blame-ignore-revs'), '');
+    assert.deepEqual(blameOptions(root, cfg({})), ['--ignore-revs-file', pathx.join(root, '.git-blame-ignore-revs')]);
+    assert.deepEqual(blameOptions(root, cfg({ 'blame.ignoreWhitespace': true, 'blame.ignoreRevsFile': '' })), ['-w']);
+    assert.deepEqual(blameOptions(root, cfg({ 'blame.ignoreRevsFile': '../outside' })), []);
+    assert.deepEqual(blameOptions(root, cfg({ 'blame.ignoreRevsFile': '/etc/hosts' })), []);
+  } finally {
+    fsx.rmSync(root, { recursive: true, force: true });
+  }
+});

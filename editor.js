@@ -1,5 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
+const fs = require('fs');
 const g = require('./git');
 
 const UNCOMMITTED = /^0{40}$/;
@@ -147,7 +148,36 @@ async function displayAuthor(root, c) {
   return c.author && c.author === (await userName(root)) ? 'You' : c.author;
 }
 
+// Blame options: skip whitespace-only changes, and skip commits listed in the repository's
+// ignore-revs file (bulk reformatting, renames), so blame points at the real change.
+function blameOptions(root, cfg = g.config()) {
+  const opts = [];
+  if (cfg.get('blame.ignoreWhitespace', false)) opts.push('-w');
+  const file = String(cfg.get('blame.ignoreRevsFile', '.git-blame-ignore-revs') || '').trim();
+  if (file) {
+    const full = path.resolve(root, file);
+    const inside = !path.relative(root, full).startsWith('..') && !path.isAbsolute(path.relative(root, full));
+    if (inside && fs.existsSync(full)) opts.push('--ignore-revs-file', full);
+  }
+  return opts;
+}
+
 async function runBlame(doc, info, extra = []) {
+  const options = blameOptions(info.root);
+  try {
+    return await runBlameWith(doc, info, [...options, ...extra]);
+  } catch {
+    // An ignore-revs file with a bad entry makes git fail; fall back to plain blame.
+    if (!options.length) return null;
+    try {
+      return await runBlameWith(doc, info, extra);
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function runBlameWith(doc, info, extra) {
   const args = ['blame', '--porcelain', ...extra];
   let input;
   if (doc.isDirty) {
@@ -155,11 +185,7 @@ async function runBlame(doc, info, extra = []) {
     input = doc.getText();
   }
   args.push('--', info.rel);
-  try {
-    return parseBlame(await g.git(info.root, args, { input }));
-  } catch {
-    return null;
-  }
+  return parseBlame(await g.git(info.root, args, { input }));
 }
 
 function fullBlame(doc, info) {
@@ -774,6 +800,11 @@ async function register(context) {
     },
     'gitCompass.blame.showAuthors': showAuthors,
     'gitCompass.toggleFileBlame': () => toggleAnnotation('blame'),
+    'gitCompass.blame.toggleIgnoreWhitespace': async () => {
+      const next = !g.config().get('blame.ignoreWhitespace', false);
+      await g.config().update('blame.ignoreWhitespace', next, vscode.ConfigurationTarget.Global);
+      vscode.window.setStatusBarMessage(next ? 'Blame now ignores whitespace-only changes' : 'Blame now includes whitespace-only changes', 3000);
+    },
     'gitCompass.toggleHeatmap': () => toggleAnnotation('heatmap'),
     'gitCompass.toggleChanges': () => toggleAnnotation('changes'),
     'gitCompass.clearAnnotations': clearAnnotations,
@@ -816,6 +847,10 @@ async function register(context) {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (!e.affectsConfiguration('gitCompass')) return;
+      if (e.affectsConfiguration('gitCompass.blame')) {
+        blameCache.clear();
+        renderVisible();
+      }
       scheduleLine(0);
       scheduleNav(0);
       codeLensEmitter.fire();
@@ -827,4 +862,4 @@ async function register(context) {
   updateAnnotationContext();
 }
 
-module.exports = { register, formatLine, truncate, parseBlame, parseDiffHunks, relativeTime, heatBuckets, gutterLabel, lineInfo };
+module.exports = { register, blameOptions, formatLine, truncate, parseBlame, parseDiffHunks, relativeTime, heatBuckets, gutterLabel, lineInfo };
