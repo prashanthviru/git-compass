@@ -4,6 +4,8 @@ All notable changes to Git Compass are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-13
+
 ### Added
 - **Undo Last Action.** One command undoes the last thing that happened to your branch: a commit (its changes stay staged), an amend, a merge, a pull, a rebase, a reset, a cherry-pick, a revert or a squash. It explains what will change before doing anything, stops rather than overwrite uncommitted work, and offers **Revert Instead** when the commit is already pushed. It is on the Commits view title bar and in the Command Palette.
 - **Recovery view.** Your branch history (the reflog) in plain words, such as "Committed "fix login"", "Switched from main to feature/x" or "Merged feature (fast-forward)". From any point you can:
@@ -154,7 +156,8 @@ First public preview.
 - An enable setting for every view and feature.
 - Disabled in untrusted workspaces. Runs on the workspace side in remote setups.
 
-[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/prashanthviru/git-compass/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/prashanthviru/git-compass/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/prashanthviru/git-compass/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/prashanthviru/git-compass/compare/v0.2.3...v1.0.0
 [0.2.3]: https://github.com/prashanthviru/git-compass/compare/v0.2.1...v0.2.3
